@@ -40,11 +40,14 @@
 #include "Geometry/TrackerGeometryBuilder/interface/PixelGeomDetUnit.h"
 #include "Geometry/CommonDetUnit/interface/GeomDetType.h" 
 #include "Geometry/CommonDetUnit/interface/GeomDetUnit.h" 
-#include "Geometry/TrackerGeometryBuilder/interface/GluedGeomDet.h"
+#include "Geometry/CommonDetUnit/interface/GluedGeomDet.h"
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 #include "Geometry/TrackerNumberingBuilder/interface/GeometricDet.h"
 #include "Geometry/TrackerGeometryBuilder/interface/PixelGeomDetType.h"
+
+#include "DataFormats/TrackerRecHit2D/interface/SiPixelRecHitCollection.h"
+#include "SimDataFormats/Track/interface/SimTrackContainer.h"
 
 #include <string>
 
@@ -75,6 +78,10 @@ class SiPixelErrorEstimation : public edm::EDAnalyzer
  private: 
   
   edm::ParameterSet conf_;
+  edm::EDGetTokenT<std::vector<Trajectory>> tTrajectory;
+  edm::EDGetTokenT<SiPixelRecHitCollection> tPixRecHitCollection;
+  edm::EDGetTokenT <edm::SimTrackContainer> tSimTrackContainer;
+  edm::EDGetTokenT <reco::TrackCollection> tTrackCollection; 
   std::string outputFile_;
   std::string src_;
   bool checkType_; // do we check that the simHit associated with recHit is of the expected particle type ?
@@ -373,6 +380,7 @@ class SiPixelErrorEstimation : public edm::EDAnalyzer
 
   TTree * ttree_track_hits_strip_;
   
+  TrackerHitAssociator::Config trackerHitAssociatorConfig_;
 };
 
 #endif

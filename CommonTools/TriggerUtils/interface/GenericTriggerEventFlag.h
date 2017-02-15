@@ -24,12 +24,17 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESWatcher.h"
+#include "FWCore/Framework/interface/ConsumesCollector.h"
 #include "CondFormats/DataRecord/interface/AlCaRecoTriggerBitsRcd.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
+#include "DataFormats/L1GlobalTrigger/interface/L1GlobalTriggerReadoutRecord.h"
+#include "DataFormats/L1GlobalTrigger/interface/L1GlobalTriggerEvmReadoutRecord.h"
 #include "DataFormats/Scalers/interface/DcsStatus.h"
 #include "L1Trigger/GlobalTriggerAnalyzer/interface/L1GtUtils.h"
+#include "L1Trigger/L1TGlobal/interface/L1TGlobalUtil.h"
 #include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
 
+#include <memory>
 #include <string>
 
 
@@ -37,7 +42,8 @@ class GenericTriggerEventFlag {
 
     // Utility classes
     edm::ESWatcher< AlCaRecoTriggerBitsRcd > * watchDB_;
-    L1GtUtils                                  l1Gt_;
+    std::unique_ptr<L1GtUtils>                 l1Gt_;
+    std::unique_ptr<l1t::L1TGlobalUtil>        l1uGt_;
     HLTConfigProvider                          hltConfig_;
     bool                                       hltConfigInit_;
     // Configuration parameters
@@ -46,15 +52,19 @@ class GenericTriggerEventFlag {
     unsigned    verbose_;
     bool               andOrDcs_;
     edm::InputTag      dcsInputTag_;
+    edm::EDGetTokenT< DcsStatusCollection > dcsInputToken_;
     std::vector< int > dcsPartitions_;
     bool               errorReplyDcs_;
     bool                       andOrGt_;
     edm::InputTag              gtInputTag_;
+    edm::EDGetTokenT< L1GlobalTriggerReadoutRecord > gtInputToken_;
     edm::InputTag              gtEvmInputTag_;
+    edm::EDGetTokenT< L1GlobalTriggerEvmReadoutRecord > gtEvmInputToken_;
     std::string                gtDBKey_;
     std::vector< std::string > gtLogicalExpressions_;
     bool                       errorReplyGt_;
     bool                       andOrL1_;
+    bool                       stage2_;
     bool                       l1BeforeMask_;
     std::string                l1DBKey_;
     std::vector< std::string > l1LogicalExpressionsCache_;
@@ -62,6 +72,7 @@ class GenericTriggerEventFlag {
     bool                       errorReplyL1_;
     bool                       andOrHlt_;
     edm::InputTag              hltInputTag_;
+    edm::EDGetTokenT< edm::TriggerResults > hltInputToken_;
     std::string                hltDBKey_;
     std::vector< std::string > hltLogicalExpressionsCache_;
     std::vector< std::string > hltLogicalExpressions_;
@@ -78,8 +89,13 @@ class GenericTriggerEventFlag {
 
   public:
 
-    // Constructors and destructor
-    GenericTriggerEventFlag( const edm::ParameterSet & config ); // To be called from the ED module's c'tor
+    // Constructors must be called from the ED module's c'tor
+    template <typename T>
+    GenericTriggerEventFlag( const edm::ParameterSet & config, edm::ConsumesCollector && iC, T& module );
+
+    template <typename T>
+    GenericTriggerEventFlag( const edm::ParameterSet & config, edm::ConsumesCollector & iC, T& module );
+
     ~GenericTriggerEventFlag();
 
     // Public methods
@@ -92,6 +108,8 @@ class GenericTriggerEventFlag {
 
     // Private methods
 
+    GenericTriggerEventFlag( const edm::ParameterSet & config, edm::ConsumesCollector & iC );
+
     // DCS
     bool acceptDcs( const edm::Event & event );
     bool acceptDcsPartition( const edm::Handle< DcsStatusCollection > & dcsStatus, int dcsPartition ) const;
@@ -102,7 +120,7 @@ class GenericTriggerEventFlag {
 
     // L1
     bool acceptL1( const edm::Event & event, const edm::EventSetup & setup );
-    bool acceptL1LogicalExpression( const edm::Event & event, std::string l1LogicalExpression );
+    bool acceptL1LogicalExpression( const edm::Event & event, const edm::EventSetup & setup, std::string l1LogicalExpression );
 
     // HLT
     bool acceptHlt( const edm::Event & event );
@@ -124,5 +142,23 @@ class GenericTriggerEventFlag {
 
 };
 
+template <typename T>
+GenericTriggerEventFlag::GenericTriggerEventFlag( const edm::ParameterSet & config, edm::ConsumesCollector && iC, T& module ) :
+  GenericTriggerEventFlag(config, iC, module) {
+}
+
+template <typename T>
+GenericTriggerEventFlag::GenericTriggerEventFlag( const edm::ParameterSet & config, edm::ConsumesCollector & iC, T& module ) :
+  GenericTriggerEventFlag(config, iC) {
+  if ( config.exists( "andOrL1" ) ) 
+    if (stage2_)
+      l1uGt_.reset(new l1t::L1TGlobalUtil(config, iC));
+    else
+      l1Gt_.reset(new L1GtUtils(config, iC, false, module));
+  else {
+    l1uGt_.reset(NULL);
+    l1Gt_.reset(NULL);
+  }
+}
 
 #endif

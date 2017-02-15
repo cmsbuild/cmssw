@@ -40,8 +40,10 @@ using namespace edm;
 PreshowerClusterShapeProducer::PreshowerClusterShapeProducer(const ParameterSet& ps) {
   // use configuration file to setup input/output collection names
   // Parameters to identify the hit collections
-  preshHitProducer_   = ps.getParameter<edm::InputTag>("preshRecHitProducer");
-  endcapSClusterProducer_   = ps.getParameter<edm::InputTag>("endcapSClusterProducer");
+  preshHitToken_   = 
+	  consumes<EcalRecHitCollection>(ps.getParameter<edm::InputTag>("preshRecHitProducer"));
+  endcapSClusterToken_   = 
+	  consumes<reco::SuperClusterCollection>(ps.getParameter<edm::InputTag>("endcapSClusterProducer"));
 
   PreshowerClusterShapeCollectionX_ = ps.getParameter<string>("PreshowerClusterShapeCollectionX");
   PreshowerClusterShapeCollectionY_ = ps.getParameter<string>("PreshowerClusterShapeCollectionY");
@@ -89,9 +91,9 @@ void PreshowerClusterShapeProducer::produce(Event& evt, const EventSetup& es) {
   const CaloSubdetectorGeometry *& geometry_p = geometry;
 
 
-  // create an auto_ptr to a PreshowerClusterShapeCollection
-  std::auto_ptr< reco::PreshowerClusterShapeCollection > ps_cl_for_pi0_disc_x(new reco::PreshowerClusterShapeCollection);
-  std::auto_ptr< reco::PreshowerClusterShapeCollection > ps_cl_for_pi0_disc_y(new reco::PreshowerClusterShapeCollection);
+  // create a unique_ptr to a PreshowerClusterShapeCollection
+  auto ps_cl_for_pi0_disc_x = std::make_unique<reco::PreshowerClusterShapeCollection>();
+  auto ps_cl_for_pi0_disc_y = std::make_unique<reco::PreshowerClusterShapeCollection>();
 
 
   CaloSubdetectorTopology* topology_p=0;
@@ -100,7 +102,7 @@ void PreshowerClusterShapeProducer::produce(Event& evt, const EventSetup& es) {
 
   
   // fetch the Preshower product (RecHits)
-  evt.getByLabel( preshHitProducer_, pRecHits);
+  evt.getByToken( preshHitToken_, pRecHits);
   // pointer to the object in the product
   const EcalRecHitCollection* rechits = pRecHits.product(); 
   
@@ -126,7 +128,7 @@ void PreshowerClusterShapeProducer::produce(Event& evt, const EventSetup& es) {
 //  const PhotonCollection corrPhoCollection = *(correctedPhotonHandle.product());
 //  cout << " Photon Collection size : " << corrPhoCollection.size() << endl;
 
-  evt.getByLabel(endcapSClusterProducer_, pSuperClusters);
+  evt.getByToken(endcapSClusterToken_, pSuperClusters);
   const reco::SuperClusterCollection* SClusts = pSuperClusters.product();
   LogTrace("EcalClusters") << "### Total # Endcap Superclusters: " << SClusts->size() ;
 
@@ -184,8 +186,8 @@ void PreshowerClusterShapeProducer::produce(Event& evt, const EventSetup& es) {
   ps_cl_for_pi0_disc_x->assign(ps_cl_x.begin(), ps_cl_x.end());
   ps_cl_for_pi0_disc_y->assign(ps_cl_y.begin(), ps_cl_y.end());
   
-  evt.put(ps_cl_for_pi0_disc_x, PreshowerClusterShapeCollectionX_);
-  evt.put(ps_cl_for_pi0_disc_y, PreshowerClusterShapeCollectionY_);  
+  evt.put(std::move(ps_cl_for_pi0_disc_x), PreshowerClusterShapeCollectionX_);
+  evt.put(std::move(ps_cl_for_pi0_disc_y), PreshowerClusterShapeCollectionY_);  
   LogTrace("EcalClusters") << "PreshowerClusterShapeCollection added to the event" ;
   
   if (topology_p)

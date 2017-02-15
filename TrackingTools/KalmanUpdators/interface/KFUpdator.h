@@ -24,14 +24,12 @@
  * Initial author: P.Vanlaer 25.02.1999
  * Ported from ORCA.
  *
- *  $Date: 2007/05/09 13:50:25 $
- *  $Revision: 1.3 $
  *  \author vanlaer, cerati
  */
 
 #include "TrackingTools/PatternTools/interface/TrajectoryStateUpdator.h"
 
-class KFUpdator GCC11_FINAL : public TrajectoryStateUpdator {
+class KFUpdator final : public TrajectoryStateUpdator {
 
 public:
 
@@ -40,10 +38,8 @@ public:
   KFUpdator() {}
 
   TrajectoryStateOnSurface update(const TrajectoryStateOnSurface&,
-                                  const TransientTrackingRecHit&) const;
+                                  const TrackingRecHit&) const;
 
-  template <unsigned int D> TrajectoryStateOnSurface update(const TrajectoryStateOnSurface&,
-                                  const TransientTrackingRecHit&) const;
 
   virtual KFUpdator * clone() const {
     return new KFUpdator(*this);

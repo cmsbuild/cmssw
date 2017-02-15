@@ -39,10 +39,12 @@ Multi5x5ClusterProducer::Multi5x5ClusterProducer(const edm::ParameterSet& ps)
 {
 
   // Parameters to identify the hit collections
-  barrelHitProducer_   = ps.getParameter<std::string>("barrelHitProducer");
-  endcapHitProducer_   = ps.getParameter<std::string>("endcapHitProducer");
-  barrelHitCollection_ = ps.getParameter<std::string>("barrelHitCollection");
-  endcapHitCollection_ = ps.getParameter<std::string>("endcapHitCollection");
+  barrelHitToken_   = 
+	  consumes<EcalRecHitCollection>(ps.getParameter<edm::InputTag>("barrelHitTag"));
+  
+  endcapHitToken_   = 
+	  consumes<EcalRecHitCollection>(ps.getParameter<edm::InputTag>("endcapHitTag"));
+
 
   // should cluster algo be run in barrel and endcap?
   doEndcap_ = ps.getParameter<bool>("doEndcap");
@@ -92,40 +94,31 @@ void Multi5x5ClusterProducer::produce(edm::Event& evt, const edm::EventSetup& es
 {
 
   if (doEndcap_) {
-    clusterizeECALPart(evt, es, endcapHitProducer_, endcapHitCollection_, endcapClusterCollection_, reco::CaloID::DET_ECAL_ENDCAP); 
+    clusterizeECALPart(evt, es, endcapHitToken_, endcapClusterCollection_, reco::CaloID::DET_ECAL_ENDCAP); 
   }
   if (doBarrel_) {
-    clusterizeECALPart(evt, es, barrelHitProducer_, barrelHitCollection_, barrelClusterCollection_, reco::CaloID::DET_ECAL_BARREL);
+    clusterizeECALPart(evt, es, barrelHitToken_, barrelClusterCollection_, reco::CaloID::DET_ECAL_BARREL);
   }
 
   nEvt_++;
 }
 
 
-const EcalRecHitCollection * Multi5x5ClusterProducer::getCollection(edm::Event& evt,
-                                                                  const std::string& hitProducer_,
-                                                                  const std::string& hitCollection_)
+const EcalRecHitCollection * Multi5x5ClusterProducer::getCollection(edm::Event& evt, const edm::EDGetTokenT<EcalRecHitCollection>& token)
 {
   edm::Handle<EcalRecHitCollection> rhcHandle;
-  evt.getByLabel(hitProducer_, hitCollection_, rhcHandle);
-  if (!(rhcHandle.isValid())) 
-    {
-      edm::LogError("MissingProduct") << "could not get a handle on the EcalRecHitCollection! : "  ;;
-      return 0;
-    }
-
+  evt.getByToken(token, rhcHandle);
   return rhcHandle.product();
 }
 
 
 void Multi5x5ClusterProducer::clusterizeECALPart(edm::Event &evt, const edm::EventSetup &es,
-                                               const std::string& hitProducer,
-                                               const std::string& hitCollection,
+											   const edm::EDGetTokenT<EcalRecHitCollection>& token,
                                                const std::string& clusterCollection,
                                                const reco::CaloID::Detectors detector)
 {
   // get the hit collection from the event:
-  const EcalRecHitCollection *hitCollection_p = getCollection(evt, hitProducer, hitCollection);
+  const EcalRecHitCollection *hitCollection_p = getCollection(evt, token);
 
   // get the geometry and topology from the event setup:
   edm::ESHandle<CaloGeometry> geoHandle;
@@ -152,14 +145,14 @@ void Multi5x5ClusterProducer::clusterizeECALPart(edm::Event &evt, const edm::Eve
   reco::BasicClusterCollection clusters;
   clusters = island_p->makeClusters(hitCollection_p, geometry_p, topology_p, geometryES_p, detector);
 
-  // create an auto_ptr to a BasicClusterCollection, copy the barrel clusters into it and put in the Event:
-  std::auto_ptr< reco::BasicClusterCollection > clusters_p(new reco::BasicClusterCollection);
+  // create a unique_ptr to a BasicClusterCollection, copy the barrel clusters into it and put in the Event:
+  auto clusters_p = std::make_unique<reco::BasicClusterCollection>();
   clusters_p->assign(clusters.begin(), clusters.end());
   edm::OrphanHandle<reco::BasicClusterCollection> bccHandle;
   if (detector == reco::CaloID::DET_ECAL_BARREL) 
-    bccHandle = evt.put(clusters_p, barrelClusterCollection_);
+    bccHandle = evt.put(std::move(clusters_p), barrelClusterCollection_);
   else
-    bccHandle = evt.put(clusters_p, endcapClusterCollection_);
+    bccHandle = evt.put(std::move(clusters_p), endcapClusterCollection_);
 
   delete topology_p;
 }

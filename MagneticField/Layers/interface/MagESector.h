@@ -5,8 +5,6 @@
  *  A sector of volumes in the endcap.
  *  One sector is composed of several layers (MagELayer)
  *
- *  $Date: 2005/09/06 15:49:29 $
- *  $Revision: 1.1 $
  *  \author N. Amapane - INFN Torino
  */
 
@@ -26,7 +24,7 @@ public:
   virtual ~MagESector();
 
   /// Find the volume containing a point, with a given tolerance
-  MagVolume * findVolume(const GlobalPoint & gp, double tolerance) const;
+  const MagVolume * findVolume(const GlobalPoint & gp, double tolerance) const;
 
   /// Phi of sector start
   Geom::Phi<float> minPhi() const {return thePhiMin;}

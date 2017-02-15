@@ -7,7 +7,7 @@
 #include <fstream>
 #include <FWCore/Framework/interface/Frameworkfwd.h>
 
-#include <FWCore/Framework/interface/EDAnalyzer.h>
+#include <FWCore/Framework/interface/one/EDAnalyzer.h>
 #include <FWCore/Framework/interface/Event.h>
 #include <FWCore/Framework/interface/EventSetup.h>
 #include <FWCore/Framework/interface/ESHandle.h>
@@ -26,14 +26,16 @@
 
 using namespace std;
 
-class RPCGeometryAnalyzer : public edm::EDAnalyzer {
+class RPCGeometryAnalyzer : public edm::one::EDAnalyzer<> {
 
  public: 
   RPCGeometryAnalyzer( const edm::ParameterSet& pset);
 
   ~RPCGeometryAnalyzer();
 
-  virtual void analyze( const edm::Event&, const edm::EventSetup& );
+  void beginJob() override {}
+  void analyze(edm::Event const& iEvent, edm::EventSetup const&) override;
+  void endJob() override {}
  
   const std::string& myName() { return myName_;}
 
@@ -107,9 +109,9 @@ RPCGeometryAnalyzer::analyze( const edm::Event& /*iEvent*/, const edm::EventSetu
 
 //      //----------------------- RPCCHAMBER TEST -------------------------------------------------------
 
-      if( dynamic_cast< RPCChamber* >( *it ) != 0 ){
+      if( dynamic_cast< const RPCChamber* >( *it ) != 0 ){
        ++iRPCCHcount;
-       RPCChamber* ch = dynamic_cast< RPCChamber* >( *it ); 
+       const RPCChamber* ch = dynamic_cast< const RPCChamber* >( *it ); 
 
        
        RPCDetId detId=ch->id();

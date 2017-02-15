@@ -22,9 +22,12 @@
 #include "SimG4CMS/CherenkovAnalysis/interface/DreamSD.h"
 #include "SimG4CMS/CherenkovAnalysis/interface/PMTResponse.h"
 
+#include "G4SystemOfUnits.hh"
+#include "G4PhysicalConstants.hh"
+
 //________________________________________________________________________________________
 DreamSD::DreamSD(G4String name, const DDCompactView & cpv,
-	       SensitiveDetectorCatalog & clg, 
+	       const SensitiveDetectorCatalog & clg,
 	       edm::ParameterSet const & p, const SimTrackManager* manager) : 
   CaloSD(name, cpv, clg, p, manager) {
 
@@ -193,7 +196,7 @@ void DreamSD::initMap(G4String sd, const DDCompactView & cpv) {
   G4String attribute = "ReadOutName";
   DDSpecificsFilter filter;
   DDValue           ddv(attribute,sd,0);
-  filter.setCriteria(ddv,DDSpecificsFilter::equals);
+  filter.setCriteria(ddv,DDCompOp::equals);
   DDFilteredView fv(cpv);
   fv.addFilter(filter);
   fv.firstChild();

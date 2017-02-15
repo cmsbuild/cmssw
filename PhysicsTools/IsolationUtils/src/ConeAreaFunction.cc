@@ -16,7 +16,6 @@
 //
 // Original Author:  Christian Veelken, UC Davis
 //         Created:  Thu Nov  2 13:47:40 CST 2006
-// $Id: ConeAreaFunction.cc,v 1.2 2007/05/28 09:59:50 llista Exp $
 //
 //
 
@@ -98,7 +97,7 @@ void ConeAreaFunction::SetParameterPhi0(double phi0)
   phi0_ = normalizedPhi(phi0); // map azimuth angle into interval [-pi,+pi]
 }
 
-void ConeAreaFunction::SetParameters(double* param)
+void ConeAreaFunction::SetParameters(const double* param)
 {
   if ( debugLevel_ > 0 ) {
     edm::LogVerbatim("") << "<ConeAreaFunction::SetParameters>:" << std::endl

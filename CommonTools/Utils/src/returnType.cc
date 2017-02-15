@@ -1,40 +1,59 @@
 #include "CommonTools/Utils/src/returnType.h"
-#include <map>
+
+#include "FWCore/Utilities/interface/FunctionWithDict.h"
+#include "FWCore/Utilities/interface/TypeWithDict.h"
+
+#include <algorithm>
+#include <cstring>
 #include <string>
-using namespace std;
+#include <vector>
+
 using namespace reco::method;
+using namespace std;
 
 namespace reco {
-  edm::TypeWithDict returnType(const edm::FunctionWithDict & mem) {
-    return mem.finalReturnType();
+
+  edm::TypeWithDict returnType(const edm::FunctionWithDict& func) {
+    return func.finalReturnType();
   }
 
-  TypeCode returnTypeCode(const edm::FunctionWithDict & mem) {
-    return typeCode(returnType(mem));
+  TypeCode returnTypeCode(const edm::FunctionWithDict& func) {
+    return typeCode(returnType(func));
   }
 
-  TypeCode typeCode(const edm::TypeWithDict & t) {
-    static map<string, method::TypeCode> retTypeMap;
-    if (retTypeMap.size() == 0) {
-      retTypeMap["double"] = doubleType;
-      retTypeMap["float"] = floatType;
-      retTypeMap["int"] = intType;
-      retTypeMap["unsigned int"] = uIntType;
-      retTypeMap["short"] = shortType;
-      retTypeMap["short int"] = shortType;
-      retTypeMap["unsigned short"] = uShortType;
-      retTypeMap["unsigned short int"] = uShortType;
-      retTypeMap["long"] = longType;
-      retTypeMap["long int"] = longType;
-      retTypeMap["unsigned long"] = uLongType;
-      retTypeMap["unsigned long int"] = uLongType;
-      retTypeMap["size_t"] = uLongType;
-      retTypeMap["char"] = charType;
-      retTypeMap["unsigned char"] = uCharType;
-      retTypeMap["bool"] = boolType;
+  //this is already alphabetized
+  static const std::vector<std::pair<char const* const, method::TypeCode> > retTypeVec {
+     {"bool", boolType},
+     {"char", charType},
+     {"double", doubleType},
+     {"float", floatType},
+     {"int", intType},
+     {"long", longType},
+     {"long int", longType},
+     {"short", shortType},
+     {"short int", shortType},
+     {"size_t", uLongType},
+     {"unsigned char", uCharType},
+     {"unsigned int", uIntType},
+     {"unsigned long", uLongType},
+     {"unsigned long int", uLongType},
+     {"unsigned short", uShortType},
+     {"unsigned short int", uShortType}
+  };
+
+  TypeCode typeCode(const edm::TypeWithDict& t) {
+    typedef std::pair<const char* const, method::TypeCode> Values;
+    std::string name = t.name();
+    auto f = std::equal_range(retTypeVec.begin(), retTypeVec.end(),
+      Values{name.c_str(), enumType},
+      [](const Values& iLHS, const Values& iRHS) -> bool {
+        return std::strcmp(iLHS.first, iRHS.first) < 0;
+      });
+    if (f.first == f.second) {
+      return t.isEnum() ? enumType : invalid;
     }
-    map<string, TypeCode>::const_iterator f = retTypeMap.find(t.name());
-    if (f == retTypeMap.end()) return (t.isEnum() ? enumType : invalid);
-    else return f->second;
+    return f.first->second;
   }
-}
+
+} // namespace reco
+

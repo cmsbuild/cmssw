@@ -25,7 +25,7 @@ HLTJets::HLTJets() {
 }
 
 /*  Setup the analysis to put the branch-variables into the tree. */
-void HLTJets::setup(const edm::ParameterSet& pSet, TTree* HltTree) {
+void HLTJets::setup(const edm::ParameterSet& pSet, TTree* HltTree, edm::ConsumesCollector&& iC) {
     
     edm::ParameterSet myJetParams = pSet.getParameter<edm::ParameterSet>("RunParameters") ;
     std::vector<std::string> parameterNames = myJetParams.getParameterNames() ;
@@ -38,7 +38,7 @@ void HLTJets::setup(const edm::ParameterSet& pSet, TTree* HltTree) {
         else if ( (*iParam) == "GenJetMin" ) _GenJetMin =  myJetParams.getParameter<double>( *iParam );
     }
 
-    jetID = new reco::helper::JetIDHelper(pSet.getParameter<edm::ParameterSet>("JetIDParams"));
+    jetID = new reco::helper::JetIDHelper(pSet.getParameter<edm::ParameterSet>("JetIDParams"), std::move(iC));
 
     const int kMaxRecoPFJet = 10000;
     jpfrecopt=new float[kMaxRecoPFJet];
@@ -426,6 +426,7 @@ void HLTJets::analyze(edm::Event const& iEvent,
 		      const edm::Handle<CaloTowerCollection>          & caloTowersCleanerUpperR45,
 		      const edm::Handle<CaloTowerCollection>          & caloTowersCleanerLowerR45,
 		      const edm::Handle<CaloTowerCollection>          & caloTowersCleanerNoR45,
+              const CaloTowerTopology * cttopo,
 		      const edm::Handle<reco::PFMETCollection>        & pfmets, 
                       double thresholdForSavingTowers, 
                       double		    minPtCH,
@@ -587,19 +588,19 @@ void HLTJets::analyze(edm::Event const& iEvent,
  if( caloTowersCleanerUpperR45.isValid() ){
    towersUpperValid = true;
    for( CaloTowerCollection::const_iterator tow = caloTowersCleanerUpperR45->begin(); tow != caloTowersCleanerUpperR45->end(); tow++){
-     towersUpper.insert(tow->id().denseIndex());
+     towersUpper.insert(cttopo->denseIndex(tow->id()));
    }
  }
  if( caloTowersCleanerLowerR45.isValid() ){
    towersLowerValid = true;
    for( CaloTowerCollection::const_iterator tow = caloTowersCleanerLowerR45->begin(); tow != caloTowersCleanerLowerR45->end(); tow++){
-     towersLower.insert(tow->id().denseIndex());
+     towersLower.insert(cttopo->denseIndex(tow->id()));
    }
  }
  if( caloTowersCleanerNoR45.isValid() ){
    towersNoneValid = true;
    for( CaloTowerCollection::const_iterator tow = caloTowersCleanerNoR45->begin(); tow != caloTowersCleanerNoR45->end(); tow++){
-     towersNone.insert(tow->id().denseIndex());
+     towersNone.insert(cttopo->denseIndex(tow->id()));
    }
  }
  if (caloTowers.isValid()) {
@@ -616,9 +617,9 @@ void HLTJets::analyze(edm::Event const& iEvent,
 	 towhd[jtow] = tower->hadEnergy();
 	 towoe[jtow] = tower->outerEnergy();
 	 // noise filters: true = no noise, false = noise
-	 if(towersUpperValid) {if(towersUpper.find(tower->id().denseIndex()) == towersUpper.end()) towR45upper[jtow]=true; else towR45upper[jtow]=false;}
-	 if(towersLowerValid) {if(towersLower.find(tower->id().denseIndex()) == towersLower.end()) towR45lower[jtow]=true; else towR45lower[jtow]=false;}
-	 if(towersNoneValid) {if(towersNone.find(tower->id().denseIndex()) == towersNone.end()) towR45none[jtow]=true; else towR45none[jtow]=false;}
+	 if(towersUpperValid) {if(towersUpper.find(cttopo->denseIndex(tower->id())) == towersUpper.end()) towR45upper[jtow]=true; else towR45upper[jtow]=false;}
+	 if(towersLowerValid) {if(towersLower.find(cttopo->denseIndex(tower->id())) == towersLower.end()) towR45lower[jtow]=true; else towR45lower[jtow]=false;}
+	 if(towersNoneValid) {if(towersNone.find(cttopo->denseIndex(tower->id())) == towersNone.end()) towR45none[jtow]=true; else towR45none[jtow]=false;}
 	 jtow++;
        }
    }
@@ -981,7 +982,7 @@ void HLTJets::analyze(edm::Event const& iEvent,
             pfJetchargedEMFraction[ipfJet] = i->chargedEmEnergyFraction ();
 	    //std::cout << "jet pT = " << i->pt() << " ; neutralHadronEnergyFraction = " << i->neutralHadronEnergyFraction() << std::endl;
 
-	    if (i->pt() > 40. && abs(i->eta())<3.0)
+	    if (i->pt() > 40. && std::abs(i->eta())<3.0)
 	      pfHT  += i -> pt();
 	    if (i->pt() > 30.){
 	      pfMHTx = pfMHTx + i->px();

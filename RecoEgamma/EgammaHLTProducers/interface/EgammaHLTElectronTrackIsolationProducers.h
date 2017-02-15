@@ -8,6 +8,7 @@
 //
 // Original Author:  Monica Vazquez Acosta (CERN)
 //
+// $Id: EgammaHLTElectronTrackIsolationProducers.h,v 1.3 2011/12/19 11:16:45 sani Exp $
 //
 //
 
@@ -17,47 +18,45 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
-
+#include "FWCore/Framework/interface/global/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
+#include "DataFormats/EgammaCandidates/interface/Electron.h"
+#include "DataFormats/RecoCandidate/interface/RecoEcalCandidate.h"
+#include "DataFormats/EgammaCandidates/interface/ElectronFwd.h"
+#include "DataFormats/RecoCandidate/interface/RecoEcalCandidateFwd.h"
+#include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "DataFormats/TrackReco/interface/Track.h"
 
+namespace edm {
+  class ConfigurationDescriptions;
+}
 
-//
-// class declaration
-//
+class EgammaHLTElectronTrackIsolationProducers : public edm::global::EDProducer<> {
+public:
+  explicit EgammaHLTElectronTrackIsolationProducers(const edm::ParameterSet&);
+  ~EgammaHLTElectronTrackIsolationProducers();
+  void produce(edm::StreamID sid, edm::Event&, const edm::EventSetup&) const override;
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
-class EgammaHLTElectronTrackIsolationProducers : public edm::EDProducer {
-   public:
-      explicit EgammaHLTElectronTrackIsolationProducers(const edm::ParameterSet&);
-      ~EgammaHLTElectronTrackIsolationProducers();
+private:
+  const edm::EDGetTokenT<reco::ElectronCollection> electronProducer_;
+  const edm::EDGetTokenT<reco::TrackCollection> trackProducer_;
+  const edm::EDGetTokenT<reco::RecoEcalCandidateCollection> recoEcalCandidateProducer_;
+  const edm::EDGetTokenT<reco::BeamSpot> beamSpotProducer_;
 
+  const bool useGsfTrack_;
+  const bool useSCRefs_;
 
-      virtual void produce(edm::Event&, const edm::EventSetup&);
-   private:
-      // ----------member data ---------------------------
-
-  edm::InputTag electronProducer_;
-  edm::InputTag trackProducer_;
-  edm::InputTag recoEcalCandidateProducer_;
-  edm::InputTag beamSpotProducer_;
-
-  bool useGsfTrack_;
-  bool useSCRefs_;
-
-  double egTrkIsoPtMin_; 
-  double egTrkIsoConeSize_;
-  double egTrkIsoZSpan_;   
-  double egTrkIsoRSpan_;  
-  double egTrkIsoVetoConeSizeBarrel_;
-  double egTrkIsoVetoConeSizeEndcap_;
-  double egTrkIsoStripBarrel_;
-  double egTrkIsoStripEndcap_;
-
-  
-  
+  const double egTrkIsoPtMin_; 
+  const double egTrkIsoConeSize_;
+  const double egTrkIsoZSpan_;   
+  const double egTrkIsoRSpan_;  
+  const double egTrkIsoVetoConeSizeBarrel_;
+  const double egTrkIsoVetoConeSizeEndcap_;
+  const double egTrkIsoStripBarrel_;
+  const double egTrkIsoStripEndcap_;
 };
 

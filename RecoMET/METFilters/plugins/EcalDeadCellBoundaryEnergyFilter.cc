@@ -70,8 +70,8 @@ class EcalDeadCellBoundaryEnergyFilter: public edm::EDFilter {
       // ----------member data ---------------------------
       const int kMAX;
 
-      const edm::InputTag EBRecHitsLabel_;
-      const edm::InputTag EERecHitsLabel_;
+      edm::EDGetTokenT<EcalRecHitCollection> EBRecHitsToken_;
+      edm::EDGetTokenT<EcalRecHitCollection> EERecHitsToken_;
 
       const std::string FilterAlgo_;
       const bool taggingMode_;
@@ -112,11 +112,11 @@ class EcalDeadCellBoundaryEnergyFilter: public edm::EDFilter {
 //
 // constructors and destructor
 //
-EcalDeadCellBoundaryEnergyFilter::EcalDeadCellBoundaryEnergyFilter(const edm::ParameterSet& iConfig) 
+EcalDeadCellBoundaryEnergyFilter::EcalDeadCellBoundaryEnergyFilter(const edm::ParameterSet& iConfig)
    : kMAX (50)
    //now do what ever initialization is needed
-   , EBRecHitsLabel_ (iConfig.getParameter<edm::InputTag> ("recHitsEB"))
-   , EERecHitsLabel_ (iConfig.getParameter<edm::InputTag> ("recHitsEE"))
+   , EBRecHitsToken_ (consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag> ("recHitsEB")))
+   , EERecHitsToken_ (consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag> ("recHitsEE")))
 
    , FilterAlgo_ (iConfig.getUntrackedParameter<std::string> ("FilterAlgo", "TuningMode"))
    , taggingMode_ (iConfig.getParameter<bool>("taggingMode"))
@@ -181,9 +181,9 @@ bool EcalDeadCellBoundaryEnergyFilter::filter(edm::Event& iEvent, const edm::Eve
 
    // Get the Ecal RecHits
    Handle<EcalRecHitCollection> EBRecHits;
-   iEvent.getByLabel(EBRecHitsLabel_, EBRecHits);
+   iEvent.getByToken(EBRecHitsToken_, EBRecHits);
    Handle<EcalRecHitCollection> EERecHits;
-   iEvent.getByLabel(EERecHitsLabel_, EERecHits);
+   iEvent.getByToken(EERecHitsToken_, EERecHits);
 
    edm::ESHandle<CaloTopology> theCaloTopology;
    iSetup.get<CaloTopologyRecord> ().get(theCaloTopology);
@@ -231,7 +231,7 @@ bool EcalDeadCellBoundaryEnergyFilter::filter(edm::Event& iEvent, const edm::Eve
 
             for (std::vector<int>::iterator sit = deadNeighbourStati.begin(); sit != deadNeighbourStati.end(); ++sit) {
                //std::cout << "Neighbouring dead channel with status: " << *sit << std::endl;
-               if (channelAllowed == *sit || (channelAllowed < 0 && abs(channelAllowed) <= *sit)) {
+               if (channelAllowed == *sit || (channelAllowed < 0 && std::abs(channelAllowed) <= *sit)) {
                   passChannelLimitation = true;
                   break;
                }
@@ -326,7 +326,7 @@ bool EcalDeadCellBoundaryEnergyFilter::filter(edm::Event& iEvent, const edm::Eve
 
             for (std::vector<int>::iterator sit = deadNeighbourStati.begin(); sit != deadNeighbourStati.end(); ++sit) {
                //std::cout << "Neighbouring dead channel with status: " << *sit << std::endl;
-               if (channelAllowed == *sit || (channelAllowed < 0 && abs(channelAllowed) <= *sit)) {
+               if (channelAllowed == *sit || (channelAllowed < 0 && std::abs(channelAllowed) <= *sit)) {
                   passChannelLimitation = true;
                   break;
                }
@@ -344,7 +344,7 @@ bool EcalDeadCellBoundaryEnergyFilter::filter(edm::Event& iEvent, const edm::Eve
          double eta = cellGeom->getPosition().eta();
 
          if (!detIdAlreadyChecked && deadNeighbourStati.size() == 0 && eeBoundaryCalc.checkRecHitHasInvalidNeighbour(
-               *hit, ecalStatus) && abs(eta) < 1.6) {
+               *hit, ecalStatus) && std::abs(eta) < 1.6) {
 
             if (debug_)
                eeBoundaryCalc.setDebugMode();
@@ -405,8 +405,8 @@ bool EcalDeadCellBoundaryEnergyFilter::filter(edm::Event& iEvent, const edm::Eve
 
    sameFlagDetIds.clear();
 
-   std::auto_ptr<AnomalousECALVariables> pAnomalousECALVariables(new AnomalousECALVariables(v_enNeighboursGap_EB,
-            v_enNeighboursGap_EE, v_boundaryInfoDeadCells_EB, v_boundaryInfoDeadCells_EE));
+   auto pAnomalousECALVariables = std::make_unique<AnomalousECALVariables>(v_enNeighboursGap_EB,
+            v_enNeighboursGap_EE, v_boundaryInfoDeadCells_EB, v_boundaryInfoDeadCells_EE);
 
 
    bool isGap = pAnomalousECALVariables->isGapEcalCluster(cutBoundEnergyGapEB, cutBoundEnergyGapEE);
@@ -414,9 +414,9 @@ bool EcalDeadCellBoundaryEnergyFilter::filter(edm::Event& iEvent, const edm::Eve
             limitDeadCellToChannelStatusEE_);
    pass = (!isBoundary && ((!isGap && enableGap_) || !enableGap_));
 
-   iEvent.put(pAnomalousECALVariables, "anomalousECALVariables");
+   iEvent.put(std::move(pAnomalousECALVariables), "anomalousECALVariables");
 
-   iEvent.put( std::auto_ptr<bool>(new bool(pass)) );
+   iEvent.put(std::make_unique<bool>(pass));
 
    if( taggingMode_ ){
       if (skimDead_ && (i_EBDead >= 1 || i_EEDead >= 1)) {
@@ -429,13 +429,13 @@ bool EcalDeadCellBoundaryEnergyFilter::filter(edm::Event& iEvent, const edm::Eve
          return false;
       }
    }
-   else return pass; 
+   else return pass;
 
 /*
    if (FilterAlgo_ == "TuningMode") {
       std::auto_ptr<AnomalousECALVariables> pAnomalousECALVariables(new AnomalousECALVariables(v_enNeighboursGap_EB,
             v_enNeighboursGap_EE, v_boundaryInfoDeadCells_EB, v_boundaryInfoDeadCells_EE));
-      iEvent.put(pAnomalousECALVariables, "anomalousECALVariables");
+      iEvent.put(std::move(pAnomalousECALVariables), "anomalousECALVariables");
 
       if (skimDead_ && (i_EBDead >= 1 || i_EEDead >= 1)) {
          return true;

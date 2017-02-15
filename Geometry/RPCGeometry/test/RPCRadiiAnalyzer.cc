@@ -7,7 +7,7 @@
 #include <fstream>
 #include <FWCore/Framework/interface/Frameworkfwd.h>
 
-#include <FWCore/Framework/interface/EDAnalyzer.h>
+#include <FWCore/Framework/interface/one/EDAnalyzer.h>
 #include <FWCore/Framework/interface/Event.h>
 #include <FWCore/Framework/interface/EventSetup.h>
 #include <FWCore/Framework/interface/ESHandle.h>
@@ -28,14 +28,16 @@
 
 using namespace std;
 
-class RPCRadiiAnalyzer : public edm::EDAnalyzer {
+class RPCRadiiAnalyzer : public edm::one::EDAnalyzer<> {
 
  public: 
   RPCRadiiAnalyzer( const edm::ParameterSet& pset);
 
   ~RPCRadiiAnalyzer();
 
-  virtual void analyze( const edm::Event&, const edm::EventSetup& );
+  void beginJob() override {}
+  void analyze(edm::Event const& iEvent, edm::EventSetup const&) override;
+  void endJob() override {}
  
   const std::string& myName() { return myName_;}
 
@@ -90,8 +92,8 @@ RPCRadiiAnalyzer::analyze( const edm::Event& /*iEvent*/, const edm::EventSetup& 
 
 //      //----------------------- RPCCHAMBER TEST -------------------------------------------------------
 
-    if( dynamic_cast< RPCChamber* >( *it ) != 0 ){
-      RPCChamber* ch = dynamic_cast< RPCChamber* >( *it ); 
+    if( dynamic_cast< const RPCChamber* >( *it ) != 0 ){
+      const RPCChamber* ch = dynamic_cast< const RPCChamber* >( *it ); 
       
       
       //RPCDetId detId=ch->id();

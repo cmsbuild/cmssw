@@ -1,11 +1,15 @@
 #ifndef CSCDigiProducer_h
 #define CSCDigiProducer_h
 
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/ConsumesCollector.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "SimMuon/CSCDigitizer/src/CSCDigitizer.h"
- class CSCStripConditions;
+#include "SimDataFormats/CrossingFrame/interface/MixCollection.h"
+#include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
 
-class CSCDigiProducer : public edm::EDProducer
+class CSCStripConditions;
+
+class CSCDigiProducer : public edm::stream::EDProducer<>
 {
 public:
   typedef CSCDigitizer::DigiSimLinks DigiSimLinks;
@@ -20,11 +24,8 @@ private:
 
   CSCDigitizer theDigitizer;
   CSCStripConditions * theStripConditions;
-
   std::string geometryType;
-  //Name of Collection used for create the XF 
-  std::string mix_;
-  std::string collection_for_XF;
+  edm::EDGetTokenT<CrossingFrame<PSimHit> > cf_token; 
 };
 
 #endif

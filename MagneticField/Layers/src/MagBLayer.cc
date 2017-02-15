@@ -3,8 +3,6 @@
 /*
  *  See header file for a description of this class.
  *
- *  $Date: 2007/01/18 19:05:39 $
- *  $Revision: 1.3 $
  *  \author N. Amapane - INFN Torino
  */
 
@@ -59,8 +57,8 @@ MagBLayer::~MagBLayer() {
 }
 
 
-MagVolume* MagBLayer::findVolume(const GlobalPoint & gp, double tolerance) const {
-  MagVolume * result = 0;
+const MagVolume* MagBLayer::findVolume(const GlobalPoint & gp, double tolerance) const {
+  const MagVolume * result = 0;
 
   //In case the layer is composed of a single volume...
   if (theSingleVolume) {

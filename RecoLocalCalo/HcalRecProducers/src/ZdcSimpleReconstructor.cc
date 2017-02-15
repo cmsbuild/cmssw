@@ -1,6 +1,4 @@
 #include "ZdcSimpleReconstructor.h"
-#include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
-#include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
 #include "DataFormats/Common/interface/EDCollection.h"
 #include "DataFormats/Common/interface/Handle.h"
 #include "FWCore/Framework/interface/ESHandle.h"
@@ -20,9 +18,12 @@ ZdcSimpleReconstructor::ZdcSimpleReconstructor(edm::ParameterSet const& conf):
 	conf.getParameter<int>("lowGainOffset"),
 	conf.getParameter<double>("lowGainFrac")),
   det_(DetId::Hcal),
-  inputLabel_(conf.getParameter<edm::InputTag>("digiLabel")),
   dropZSmarkedPassed_(conf.getParameter<bool>("dropZSmarkedPassed"))
 {
+  tok_input_castor = consumes<ZDCDigiCollection>(conf.getParameter<edm::InputTag>("digiLabelcastor"));
+  tok_input_hcal = consumes<ZDCDigiCollection>(conf.getParameter<edm::InputTag>("digiLabelhcal"));
+
+
   std::string subd=conf.getParameter<std::string>("Subdetector");
   if (!strcasecmp(subd.c_str(),"ZDC")) {
     det_=DetId::Calo;
@@ -61,10 +62,16 @@ void ZdcSimpleReconstructor::produce(edm::Event& e, const edm::EventSetup& event
   
   if (det_==DetId::Calo && subdet_==HcalZDCDetId::SubdetectorId) {
     edm::Handle<ZDCDigiCollection> digi;
-    e.getByLabel(inputLabel_,digi);
+    e.getByToken(tok_input_hcal,digi);
+     
+     if(digi->size() == 0) {
+       e.getByToken(tok_input_castor,digi);
+       if(digi->size() == 0) 
+       	 edm::LogInfo("ZdcHitReconstructor") << "No ZDC info found in either castorDigis or hcalDigis." << std::endl;
+     }
     
     // create empty output
-    std::auto_ptr<ZDCRecHitCollection> rec(new ZDCRecHitCollection);
+    auto rec = std::make_unique<ZDCRecHitCollection>();
     rec->reserve(digi->size());
     // run the algorithm
     unsigned int toaddMem = 0;
@@ -97,6 +104,6 @@ void ZdcSimpleReconstructor::produce(edm::Event& e, const edm::EventSetup& event
       rec->push_back(reco_.reconstruct(*i,myNoiseTS,mySignalTS,coder,calibrations));
     }
     // return result
-    e.put(rec);     
+    e.put(std::move(rec));     
   }
 }

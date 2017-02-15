@@ -3,8 +3,6 @@
 /*
  *  See header file for a description of this class.
  *
- *  $Date: 2013/05/03 20:09:45 $
- *  $Revision: 1.4 $
  *  \author N. Amapane - INFN Torino
  */
 
@@ -30,7 +28,7 @@ MagBSlab::~MagBSlab(){
 }
 
 
-MagVolume* MagBSlab::findVolume(const GlobalPoint & gp, double tolerance) const {
+const MagVolume* MagBSlab::findVolume(const GlobalPoint & gp, double tolerance) const {
   for(vector<MagVolume*>::const_iterator ivol = theVolumes.begin();
 	ivol != theVolumes.end(); ++ivol) {
     // FIXME : use a binfinder

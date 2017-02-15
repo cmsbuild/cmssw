@@ -46,9 +46,7 @@ public:
 
 
 private:
-  virtual void beginRun(edm::Run & run, const edm::EventSetup&) ;
-  virtual void analyze(const edm::Event&, const edm::EventSetup&);
-  virtual void endJob() ;
+  virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
 
   std::string theMeasurementTrackerName;
 };
@@ -70,12 +68,10 @@ void MeasurementTrackerUpdator::analyze(const edm::Event& iEvent, const edm::Eve
   iSetup.get<CkfComponentsRecord>().get(theMeasurementTrackerName, measurementTracker);
 
   //update it to trigger the possible unpacking so that it is decoupled from the hosting module
-  measurementTracker->update(iEvent);
+  //measurementTracker->update(iEvent);
 
 }
 
-void MeasurementTrackerUpdator::beginRun(edm::Run & run, const edm::EventSetup&) {}
-void MeasurementTrackerUpdator::endJob() {}
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(MeasurementTrackerUpdator);

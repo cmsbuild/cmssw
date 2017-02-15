@@ -6,10 +6,14 @@
 
 #include "CaloOnlineTools/HcalOnlineDb/interface/HcalQIEManager.h"
 #include "CaloOnlineTools/HcalOnlineDb/interface/RooGKCounter.h"
-#include "xgi/Utils.h"
-#include "toolbox/string.h"
 #include "OnlineDB/Oracle/interface/Oracle.h"
 #include "CaloOnlineTools/HcalOnlineDb/interface/ConfigurationItemNotFoundException.hh"
+
+#ifdef HAVE_XDAQ
+#include "toolbox/string.h"
+#else
+#include "CaloOnlineTools/HcalOnlineDb/interface/xdaq_compat.h"  // Replaces toolbox::toString
+#endif
 
 using namespace std;
 using namespace oracle::occi;
@@ -61,7 +65,7 @@ std::map<HcalChannelId,HcalQIECaps> & HcalQIEManager::getQIETableFromFile( std::
 
   if ( infile . is_open() ){
     std::cout << "File is open" << std::endl;
-    while ( getline( infile, buf ) > 0 ){
+    while (getline( infile, buf )) {
       std::vector<std::string> _line = splitString( buf );
 
       HcalChannelId _id;
@@ -147,7 +151,7 @@ void HcalQIEManager::getTableFromDb( std::string query_file, std::string output_
 	else{
 	  std::cout << "Query file opened successfully: " << query_file << std::endl;
 	}
-	while ( getline( inFile, buf ) > 0 ){
+	while (getline( inFile, buf )) {
 	  query . append(buf);
 	  query . append("\n");
 	}
@@ -298,7 +302,7 @@ int HcalQIEManager::getHfQieTable( std::string input_file, std::string output_fi
     std::cout << "File is open" << std::endl;
     getline( infile, buf );
     std::cout << "Table legend: " << std::endl << buf << std::endl;
-    while ( getline( infile, buf ) > 0 ){
+    while (getline( infile, buf )) {
       std::vector<std::string> _line = splitString( buf );
       if ( _line . size() != 17){
 	cout << "Table line is malformed, not clear what to do... exiting." << std::endl;

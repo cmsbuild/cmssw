@@ -1,3 +1,4 @@
+#include <iostream>
 #include <memory>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -139,9 +140,9 @@ void LHECOMWeightProducer::produce(edm::Event& iEvent, const edm::EventSetup&) {
       double weight = (newpdf1/oldpdf1)*(newpdf2/oldpdf2);
       std::vector<double> weights;
       weights.push_back(weight);
-      std::auto_ptr<GenEventInfoProduct> info(new GenEventInfoProduct());
+      std::unique_ptr<GenEventInfoProduct> info(new GenEventInfoProduct());
       info->setWeights(weights);
-      iEvent.put(info, _label);
+      iEvent.put(std::move(info), _label);
 }
 
 DEFINE_FWK_MODULE(LHECOMWeightProducer);

@@ -52,14 +52,21 @@ many thanks to David Wardrope, Shahram Rahatlou and Federico Ferri
 
 UnifiedSCCollectionProducer::UnifiedSCCollectionProducer(const edm::ParameterSet& ps)
 {
-
-        // get the parameters
+	    using  reco::BasicClusterCollection;
+	    using  reco::SuperClusterCollection;
+	    // get the parameters
         // the cleaned collection:
-        cleanBcCollection_ = ps.getParameter<edm::InputTag>("cleanBcCollection");
-        cleanScCollection_ = ps.getParameter<edm::InputTag>("cleanScCollection");
+	    cleanBcCollection_ = 
+			consumes<BasicClusterCollection>(ps.getParameter<edm::InputTag>("cleanBcCollection"));
+        cleanScCollection_ = 
+			consumes<SuperClusterCollection>(ps.getParameter<edm::InputTag>("cleanScCollection"));
+ 
         // the uncleaned collection
-        uncleanBcCollection_ = ps.getParameter<edm::InputTag>("uncleanBcCollection");
-        uncleanScCollection_ = ps.getParameter<edm::InputTag>("uncleanScCollection");
+        uncleanBcCollection_ = 
+			consumes<BasicClusterCollection>(ps.getParameter<edm::InputTag>("uncleanBcCollection"));
+        uncleanScCollection_ = 
+			consumes<SuperClusterCollection>(ps.getParameter<edm::InputTag>("uncleanScCollection"));
+       
         // the names of the products to be produced:
         //
         // the clean collection: this is as it was before, but labeled
@@ -77,8 +84,6 @@ UnifiedSCCollectionProducer::UnifiedSCCollectionProducer(const edm::ParameterSet
 }
 
 
-UnifiedSCCollectionProducer::~UnifiedSCCollectionProducer() {;}
-
 
 void UnifiedSCCollectionProducer::produce(edm::Event& evt, 
                                           const edm::EventSetup& es)
@@ -95,56 +100,27 @@ void UnifiedSCCollectionProducer::produce(edm::Event& evt,
   edm::Handle<reco::BasicClusterCollection> pUncleanBC;
   edm::Handle<reco::SuperClusterCollection> pUncleanSC;
   
-  evt.getByLabel(cleanScCollection_, pCleanSC);
-  if (!(pCleanSC.isValid())) 
-    {
-      
-      edm::LogError("MissingInput") << "could not find clean super clusters";
-      return;
-    }
-  
-  evt.getByLabel(cleanBcCollection_, pCleanBC);
-  if (!(pCleanBC.isValid())) 
-    {
-      
-      edm::LogError("MissingInput") << "could not find " << cleanBcCollection_;
-      return;
-    }
-
-  evt.getByLabel(uncleanBcCollection_, pUncleanBC);
-  if (!(pUncleanBC.isValid())) 
-    {
-      
-      edm::LogError("MissingInput") << "could not find " <<  uncleanBcCollection_;
-      return;
-    }
-
-
-
-        evt.getByLabel(uncleanScCollection_, pUncleanSC);
-        if (!(pUncleanSC.isValid())) 
-        {
-
-	  edm::LogError("MissingInput")<< "could not handle unclean super clusters!" ;
-	  return;
-        }
-
-        // the collections to be produced ___________________________________________
-        reco::BasicClusterCollection basicClusters;
-        reco::SuperClusterCollection superClusters;
-        //
-        reco::BasicClusterCollection basicClustersUncleanOnly;
-        reco::SuperClusterCollection superClustersUncleanOnly;
-        //
-        // run over the uncleaned SC and check how many of them are matched to 
-        // the cleaned ones
-        // if you find a matched one, then keep the info that it is matched 
-        //    along with which clean SC was matched + its basic clusters
-        // if you find an unmatched one, keep the info and store its basic clusters
-        //
-        // 
-        int uncleanSize = pUncleanSC->size();
-        int cleanSize =   pCleanSC->size();
+  evt.getByToken(cleanScCollection_, pCleanSC);
+  evt.getByToken(cleanBcCollection_, pCleanBC);
+  evt.getByToken(uncleanBcCollection_, pUncleanBC);
+  evt.getByToken(uncleanScCollection_, pUncleanSC);
+       
+  // the collections to be produced ___________________________________________
+  reco::BasicClusterCollection basicClusters;
+  reco::SuperClusterCollection superClusters;
+  //
+  reco::BasicClusterCollection basicClustersUncleanOnly;
+  reco::SuperClusterCollection superClustersUncleanOnly;
+  //
+  // run over the uncleaned SC and check how many of them are matched to 
+  // the cleaned ones
+  // if you find a matched one, then keep the info that it is matched 
+  //    along with which clean SC was matched + its basic clusters
+  // if you find an unmatched one, keep the info and store its basic clusters
+  //
+  // 
+  int uncleanSize = pUncleanSC->size();
+  int cleanSize =   pCleanSC->size();
 	
 	LogTrace("UnifiedSC") << "Size of Clean Collection: " << cleanSize 
                         << ", uncleanSize: " << uncleanSize;
@@ -298,11 +274,10 @@ void UnifiedSCCollectionProducer::produce(edm::Event& evt,
 			      <<  " uncleaned SC: "   << uncleanSize ;
         //
         // export the clusters to the event from the clean clusters
-        std::auto_ptr< reco::BasicClusterCollection> 
-                basicClusters_p(new reco::BasicClusterCollection);
+        auto basicClusters_p = std::make_unique<reco::BasicClusterCollection>();
         basicClusters_p->assign(basicClusters.begin(), basicClusters.end());
         edm::OrphanHandle<reco::BasicClusterCollection> bccHandle =  
-                evt.put(basicClusters_p, bcCollection_);
+                evt.put(std::move(basicClusters_p), bcCollection_);
         if (!(bccHandle.isValid())) {
               
 	  edm::LogWarning("MissingInput")<< "could not handle the new BasicClusters!";
@@ -313,12 +288,11 @@ void UnifiedSCCollectionProducer::produce(edm::Event& evt,
 	LogTrace("UnifiedSC")<< "Got the BasicClusters from the event again" ;
         //
         // export the clusters to the event: from the unclean only clusters
-        std::auto_ptr< reco::BasicClusterCollection> 
-                basicClustersUncleanOnly_p(new reco::BasicClusterCollection);
+        auto basicClustersUncleanOnly_p = std::make_unique<reco::BasicClusterCollection>();
         basicClustersUncleanOnly_p->assign(basicClustersUncleanOnly.begin(), 
                                            basicClustersUncleanOnly.end());
         edm::OrphanHandle<reco::BasicClusterCollection> bccHandleUncleanOnly =  
-                evt.put(basicClustersUncleanOnly_p, bcCollectionUncleanOnly_);
+                evt.put(std::move(basicClustersUncleanOnly_p), bcCollectionUncleanOnly_);
         if (!(bccHandleUncleanOnly.isValid())) {
 
 	  edm::LogWarning("MissingInput")<< "could not handle the new BasicClusters (Unclean Only)!" ;
@@ -422,20 +396,18 @@ void UnifiedSCCollectionProducer::produce(edm::Event& evt,
 
 	LogTrace("UnifiedSC")<< "New SC collection was created";
 
-        std::auto_ptr< reco::SuperClusterCollection> 
-                superClusters_p(new reco::SuperClusterCollection);
+        auto superClusters_p = std::make_unique<reco::SuperClusterCollection>();
         superClusters_p->assign(superClusters.begin(), superClusters.end());
 
-        evt.put(superClusters_p, scCollection_);
+        evt.put(std::move(superClusters_p), scCollection_);
 	
 	LogTrace("UnifiedSC") << "Clusters (Basic/Super) added to the Event! :-)";
 
-        std::auto_ptr< reco::SuperClusterCollection> 
-                superClustersUncleanOnly_p(new reco::SuperClusterCollection);
+        auto superClustersUncleanOnly_p = std::make_unique<reco::SuperClusterCollection>();
         superClustersUncleanOnly_p->assign(superClustersUncleanOnly.begin(), 
                                            superClustersUncleanOnly.end());
 
-        evt.put(superClustersUncleanOnly_p, scCollectionUncleanOnly_);
+        evt.put(std::move(superClustersUncleanOnly_p), scCollectionUncleanOnly_);
 
         // ----- debugging ----------
         // print the new collection SC quantities

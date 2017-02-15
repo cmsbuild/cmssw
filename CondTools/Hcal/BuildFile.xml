@@ -1,7 +1,6 @@
 <use   name="boost"/>
-<use   name="oracle"/>
-<use   name="oracleocci"/>
 <use   name="FWCore/Framework"/>
+<use   name="FWCore/Concurrency"/>
 <use   name="DataFormats/HcalDetId"/>
 <use   name="CalibCalorimetry/HcalAlgos"/>
 <use   name="CalibCalorimetry/CastorCalib"/>
@@ -9,10 +8,7 @@
 <use   name="CondFormats/CastorObjects"/>
 <use   name="CalibFormats/HcalObjects"/>
 <use   name="CalibFormats/CastorObjects"/>
-<use   name="CondCore/IOVService"/>
-<use   name="CondCore/DBCommon"/>
 <use   name="RelationalAccess"/>
-<use   name="CondCore/MetaDataService"/>
 <use   name="CondCore/PopCon"/>
 <use   name="xerces-c"/>
 <export>

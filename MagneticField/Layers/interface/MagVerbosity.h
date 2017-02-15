@@ -4,14 +4,18 @@
 /*
  *  Hack while we wait for logging in the framework
  *
- *  $Date: 2005/09/27 15:15:52 $
- *  $Revision: 1.2 $
  *  \author N. Amapane - INFN Torino
  */
 
+//#DEFINE MF_DEBUG
 
+// Old debug control switch, being phased out
 struct verbose {
-  static bool debugOut;
+#ifdef MF_DEBUG
+  static constexpr bool debugOut = true;
+#else
+  static constexpr bool debugOut = false;
+#endif
 };
 
 #endif

@@ -11,6 +11,9 @@
 #include "TChain.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+
+#include "FWCore/Framework/interface/ConsumesCollector.h"
 
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/HeavyIonEvent/interface/Centrality.h"
@@ -18,6 +21,7 @@
 #include "SimDataFormats/HiGenData/interface/GenHIEvent.h"
 
 //ccla
+#include "FWCore/Utilities/interface/InputTag.h"
 #include "FWCore/Framework/interface/EventPrincipal.h"
 #include "FWCore/Common/interface/Provenance.h"
 
@@ -42,7 +46,6 @@
 //#include "DataFormats/L1GlobalTrigger/interface/L1GtLogicParser.h"
 
 #include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
-#include "L1Trigger/GlobalTriggerAnalyzer/interface/L1GtUtils.h"
 
 typedef std::vector<std::string> MyStrings;
 
@@ -54,10 +57,11 @@ typedef std::vector<std::string> MyStrings;
   */
 class HLTHeavyIon {
 public:
-  HLTHeavyIon(); 
+  HLTHeavyIon(edm::ConsumesCollector && iC); 
 
   void setup(const edm::ParameterSet& pSet, TTree* tree);
   void beginRun(const edm::Run& , const edm::EventSetup& );
+  static void fillDescriptions(edm::ConfigurationDescriptions & descriptions);
 
   /** Analyze the Data */
   void analyze(const edm::Handle<edm::TriggerResults>                 & hltresults,
@@ -99,11 +103,13 @@ private:
 
 
   HLTConfigProvider hltConfig_; 
-  L1GtUtils m_l1GtUtils;
   std::string processName_;
 
   bool _OR_BXes;
   int UnpackBxInEvent; // save number of BXs unpacked in event
+
+  edm::InputTag   centralityBin_Label;
+  edm::EDGetTokenT<int> centralityBin_Token;
 
   // input variables
   bool _Debug;

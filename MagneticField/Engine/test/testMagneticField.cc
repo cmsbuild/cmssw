@@ -13,8 +13,6 @@
  *  TOSCAFileList = file with a list of TOSCA tables
  *  TOSCASecorComparison: compare each if the listed TOSCA txt tables with those of the other sectors
  * 
- *  $Date: 2013/03/19 16:44:27 $
- *  $Revision: 1.19 $
  *  \author N. Amapane - CERN
  */
 
@@ -468,7 +466,6 @@ void testMagneticField::fillFromTable(string inputFile, vector<GlobalPoint>& p, 
 }
 
 
-#define private public
 #include "MagneticField/VolumeBasedEngine/interface/VolumeBasedMagneticField.h"
 
 // Get the pointer of the volume containing a point
@@ -487,16 +484,16 @@ const MagVolume6Faces* testMagneticField::findMasterVolume(int volume, int secto
 
   if (vbffield==0) return 0;
 
-  const vector<MagVolume6Faces*>& bvol = vbffield->barrelVolumes();
-  for (vector<MagVolume6Faces*>::const_iterator i=bvol.begin();
+  const vector<MagVolume6Faces const*>& bvol = vbffield->barrelVolumes();
+  for (vector<MagVolume6Faces const*>::const_iterator i=bvol.begin();
        i!=bvol.end(); i++) {
     if ((*i)->copyno == sector && (*i)->volumeNo==volume) {
       return (*i);
     }
   }
   
-  const vector<MagVolume6Faces*>& evol = vbffield->endcapVolumes();
-  for (vector<MagVolume6Faces*>::const_iterator i=evol.begin();
+  const vector<MagVolume6Faces const*>& evol = vbffield->endcapVolumes();
+  for (vector<MagVolume6Faces const*>::const_iterator i=evol.begin();
        i!=evol.end(); i++) {
     if ((*i)->copyno == sector && (*i)->volumeNo==volume) {
       return (*i);

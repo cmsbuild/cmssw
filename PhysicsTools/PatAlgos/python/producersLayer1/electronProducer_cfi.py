@@ -2,7 +2,7 @@ import FWCore.ParameterSet.Config as cms
 
 patElectrons = cms.EDProducer("PATElectronProducer",
     # input collection
-    electronSource = cms.InputTag("gsfElectrons"),
+    electronSource = cms.InputTag("gedGsfElectrons"),
 
     # use particle flow instead of std reco
     useParticleFlow  =  cms.bool( False ),
@@ -35,6 +35,8 @@ patElectrons = cms.EDProducer("PATElectronProducer",
       userFunctions = cms.vstring(),
       userFunctionLabels = cms.vstring()
     ),
+
+
 
     # embedding of AOD items
     embedGsfElectronCore = cms.bool(True),  ## embed in AOD externally stored gsf electron core
@@ -85,7 +87,10 @@ patElectrons = cms.EDProducer("PATElectronProducer",
 
     # high level selections
     embedHighLevelSelection = cms.bool(True),
-    usePV                   = cms.bool(True),
     beamLineSrc             = cms.InputTag("offlineBeamSpot"),
-    pvSrc                   = cms.InputTag("offlinePrimaryVertices")
+    pvSrc                   = cms.InputTag("offlinePrimaryVertices"),
+
+    # PFClusterIso
+    addPFClusterIso = cms.bool(False),
+    addPuppiIsolation = cms.bool(False)
 )

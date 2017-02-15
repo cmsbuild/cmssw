@@ -1,7 +1,6 @@
 //
 // Original Author:  Fedor Ratnikov
 //         Created:  Dec. 28, 2006
-// $Id: JetCorrectionESChain.cc,v 1.1.2.1 2011/10/17 20:54:22 wdd Exp $
 //
 //
 
@@ -28,7 +27,7 @@ JetCorrectionESChain::JetCorrectionESChain(edm::ParameterSet const& fParameters)
 
 JetCorrectionESChain::~JetCorrectionESChain() {}
 
-boost::shared_ptr<JetCorrector> JetCorrectionESChain::produce(JetCorrectionsRecord const& fRecord) {
+std::shared_ptr<JetCorrector> JetCorrectionESChain::produce(JetCorrectionsRecord const& fRecord) {
   ChainedJetCorrector* corrector = dynamic_cast<ChainedJetCorrector*>(&*mChainCorrector);
   corrector->clear ();
   for (size_t i = 0; i < mCorrectors.size(); ++i) {

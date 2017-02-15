@@ -36,22 +36,25 @@
 #include "Geometry/DTGeometry/interface/DTGeometry.h"
 #include "Geometry/CSCGeometry/interface/CSCGeometry.h"
 #include "Geometry/Records/interface/MuonNumberingRecord.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 #include "Geometry/DTGeometryBuilder/src/DTGeometryBuilderFromDDD.h"
 #include "Geometry/CSCGeometryBuilder/src/CSCGeometryBuilderFromDDD.h"
 #include "Geometry/TrackingGeometryAligner/interface/GeometryAligner.h"
+#include "CondFormats/GeometryObjects/interface/PTrackerParameters.h"
+#include "Geometry/Records/interface/PTrackerParametersRcd.h"
 #include "CondFormats/AlignmentRecord/interface/TrackerAlignmentRcd.h"
-#include "CondFormats/AlignmentRecord/interface/TrackerAlignmentErrorRcd.h"
+#include "CondFormats/AlignmentRecord/interface/TrackerAlignmentErrorExtendedRcd.h"
 #include "CondFormats/AlignmentRecord/interface/TrackerSurfaceDeformationRcd.h"
 #include "CondFormats/AlignmentRecord/interface/DTAlignmentRcd.h"
-#include "CondFormats/AlignmentRecord/interface/DTAlignmentErrorRcd.h"
+#include "CondFormats/AlignmentRecord/interface/DTAlignmentErrorExtendedRcd.h"
 #include "CondFormats/AlignmentRecord/interface/CSCAlignmentRcd.h"
-#include "CondFormats/AlignmentRecord/interface/CSCAlignmentErrorRcd.h"
+#include "CondFormats/AlignmentRecord/interface/CSCAlignmentErrorExtendedRcd.h"
 #include "CondFormats/AlignmentRecord/interface/TrackerSurveyRcd.h"
-#include "CondFormats/AlignmentRecord/interface/TrackerSurveyErrorRcd.h"
+#include "CondFormats/AlignmentRecord/interface/TrackerSurveyErrorExtendedRcd.h"
 #include "CondFormats/AlignmentRecord/interface/DTSurveyRcd.h"
-#include "CondFormats/AlignmentRecord/interface/DTSurveyErrorRcd.h"
+#include "CondFormats/AlignmentRecord/interface/DTSurveyErrorExtendedRcd.h"
 #include "CondFormats/AlignmentRecord/interface/CSCSurveyRcd.h"
-#include "CondFormats/AlignmentRecord/interface/CSCSurveyErrorRcd.h"
+#include "CondFormats/AlignmentRecord/interface/CSCSurveyErrorExtendedRcd.h"
 #include "CondFormats/AlignmentRecord/interface/GlobalPositionRcd.h"
 #include "CondFormats/Alignment/interface/DetectorGlobalPosition.h"
 
@@ -165,7 +168,7 @@ AlignmentProducer::~AlignmentProducer()
 
 //_____________________________________________________________________________
 // Produce tracker geometry
-boost::shared_ptr<TrackerGeometry>
+std::shared_ptr<TrackerGeometry>
 AlignmentProducer::produceTracker( const TrackerDigiGeometryRecord& iRecord )
 {
   edm::LogInfo("Alignment") << "@SUB=AlignmentProducer::produceTracker";
@@ -174,7 +177,7 @@ AlignmentProducer::produceTracker( const TrackerDigiGeometryRecord& iRecord )
 
 //_____________________________________________________________________________
 // Produce muonDT geometry
-boost::shared_ptr<DTGeometry>
+std::shared_ptr<DTGeometry>
 AlignmentProducer::produceDT( const MuonGeometryRecord& iRecord )
 {
   edm::LogInfo("Alignment") << "@SUB=AlignmentProducer::produceDT";
@@ -183,7 +186,7 @@ AlignmentProducer::produceDT( const MuonGeometryRecord& iRecord )
 
 //_____________________________________________________________________________
 // Produce muonCSC geometry
-boost::shared_ptr<CSCGeometry>
+std::shared_ptr<CSCGeometry>
 AlignmentProducer::produceCSC( const MuonGeometryRecord& iRecord )
 {
   edm::LogInfo("Alignment") << "@SUB=AlignmentProducer::produceCSC";
@@ -199,7 +202,7 @@ void AlignmentProducer::beginOfJob( const edm::EventSetup& iSetup )
 
   //Retrieve tracker topology from geometry
   edm::ESHandle<TrackerTopology> tTopoHandle;
-  iSetup.get<IdealGeometryRecord>().get(tTopoHandle);
+  iSetup.get<TrackerTopologyRcd>().get(tTopoHandle);
   const TrackerTopology* const tTopo = tTopoHandle.product();
 
   // Create the geometries from the ideal geometries (first time only)
@@ -214,17 +217,17 @@ void AlignmentProducer::beginOfJob( const edm::EventSetup& iSetup )
     globalPositions_ = new Alignments(*globalPositionRcd);
 
     if ( doTracker_ ) {     // apply to tracker
-      this->applyDB<TrackerGeometry,TrackerAlignmentRcd,TrackerAlignmentErrorRcd>
+      this->applyDB<TrackerGeometry,TrackerAlignmentRcd,TrackerAlignmentErrorExtendedRcd>
 	(&(*theTracker), iSetup,  
 	 align::DetectorGlobalPosition(*globalPositions_, DetId(DetId::Tracker)));
       this->applyDB<TrackerGeometry,TrackerSurfaceDeformationRcd>(&(*theTracker), iSetup);
     }
     
     if ( doMuon_ ) { // apply to tracker
-      this->applyDB<DTGeometry,DTAlignmentRcd,DTAlignmentErrorRcd>
+      this->applyDB<DTGeometry,DTAlignmentRcd,DTAlignmentErrorExtendedRcd>
 	(&(*theMuonDT), iSetup,
 	 align::DetectorGlobalPosition(*globalPositions_, DetId(DetId::Muon)));
-      this->applyDB<CSCGeometry,CSCAlignmentRcd,CSCAlignmentErrorRcd>
+      this->applyDB<CSCGeometry,CSCAlignmentRcd,CSCAlignmentErrorExtendedRcd>
 	(&(*theMuonCSC), iSetup,
 	 align::DetectorGlobalPosition(*globalPositions_, DetId(DetId::Muon)));
     }
@@ -257,6 +260,8 @@ void AlignmentProducer::beginOfJob( const edm::EventSetup& iSetup )
 
   // Get list of alignables
   Alignables theAlignables = alignmentParameterBuilder.alignables();
+
+  edm::LogInfo("Alignment") << "Constructed theAlignables calling alignmentParameterBuilder.alignables()";
   edm::LogInfo("Alignment") << "@SUB=AlignmentProducer::beginOfJob" 
                             << "got " << theAlignables.size() << " alignables";
 
@@ -411,7 +416,7 @@ void AlignmentProducer::startingNewLoop(unsigned int iLoop )
   GeometryAligner aligner;
   if ( doTracker_ ) {
     std::auto_ptr<Alignments> alignments(theAlignableTracker->alignments());
-    std::auto_ptr<AlignmentErrors> alignmentErrors(theAlignableTracker->alignmentErrors());
+    std::auto_ptr<AlignmentErrorsExtended> alignmentErrors(theAlignableTracker->alignmentErrors());
     aligner.applyAlignments<TrackerGeometry>( &(*theTracker),&(*alignments),&(*alignmentErrors), AlignTransform() ); // don't apply global a second time!
     std::auto_ptr<AlignmentSurfaceDeformations> aliDeforms(theAlignableTracker->surfaceDeformations());
     aligner.attachSurfaceDeformations<TrackerGeometry>(&(*theTracker), &(*aliDeforms));
@@ -419,12 +424,12 @@ void AlignmentProducer::startingNewLoop(unsigned int iLoop )
   }
   if ( doMuon_ ) {
     std::auto_ptr<Alignments>      dtAlignments(       theAlignableMuon->dtAlignments());
-    std::auto_ptr<AlignmentErrors> dtAlignmentErrors(  theAlignableMuon->dtAlignmentErrors());
+    std::auto_ptr<AlignmentErrorsExtended> dtAlignmentErrorsExtended(  theAlignableMuon->dtAlignmentErrorsExtended());
     std::auto_ptr<Alignments>      cscAlignments(      theAlignableMuon->cscAlignments());
-    std::auto_ptr<AlignmentErrors> cscAlignmentErrors( theAlignableMuon->cscAlignmentErrors());
+    std::auto_ptr<AlignmentErrorsExtended> cscAlignmentErrorsExtended( theAlignableMuon->cscAlignmentErrorsExtended());
 
-    aligner.applyAlignments<DTGeometry>( &(*theMuonDT), &(*dtAlignments), &(*dtAlignmentErrors), AlignTransform() ); // don't apply global a second time!
-    aligner.applyAlignments<CSCGeometry>( &(*theMuonCSC), &(*cscAlignments), &(*cscAlignmentErrors), AlignTransform() ); // nope!
+    aligner.applyAlignments<DTGeometry>( &(*theMuonDT), &(*dtAlignments), &(*dtAlignmentErrorsExtended), AlignTransform() ); // don't apply global a second time!
+    aligner.applyAlignments<CSCGeometry>( &(*theMuonCSC), &(*cscAlignments), &(*cscAlignmentErrorsExtended), AlignTransform() ); // nope!
   }
 }
 
@@ -646,8 +651,16 @@ void AlignmentProducer::createGeometries_( const edm::EventSetup& iSetup )
    if (doTracker_) {
      edm::ESHandle<GeometricDet> geometricDet;
      iSetup.get<IdealGeometryRecord>().get( geometricDet );
+
+     edm::ESHandle<PTrackerParameters> ptp;
+     iSetup.get<PTrackerParametersRcd>().get( ptp );
+
+     edm::ESHandle<TrackerTopology> tTopoHandle;
+     iSetup.get<TrackerTopologyRcd>().get(tTopoHandle);
+     const TrackerTopology* const tTopo = tTopoHandle.product();
+
      TrackerGeomBuilderFromGeometricDet trackerBuilder;
-     theTracker = boost::shared_ptr<TrackerGeometry>( trackerBuilder.build(&(*geometricDet), theParameterSet ));
+     theTracker = std::shared_ptr<TrackerGeometry>( trackerBuilder.build(&(*geometricDet), *ptp, tTopo ));
    }
 
    if (doMuon_) {
@@ -655,9 +668,9 @@ void AlignmentProducer::createGeometries_( const edm::EventSetup& iSetup )
      iSetup.get<MuonNumberingRecord>().get(mdc);
      DTGeometryBuilderFromDDD DTGeometryBuilder;
      CSCGeometryBuilderFromDDD CSCGeometryBuilder;
-     theMuonDT = boost::shared_ptr<DTGeometry>(new DTGeometry );
+     theMuonDT = std::make_shared<DTGeometry>();
      DTGeometryBuilder.build( theMuonDT, &(*cpv), *mdc);
-     theMuonCSC = boost::shared_ptr<CSCGeometry>( new CSCGeometry );
+     theMuonCSC = std::make_shared<CSCGeometry>();
      CSCGeometryBuilder.build( theMuonCSC, &(*cpv), *mdc );
    }
 }
@@ -710,7 +723,7 @@ void AlignmentProducer::readInSurveyRcds( const edm::EventSetup& iSetup ){
       edm::ESHandle<SurveyErrors> surveyErrors;
       
       iSetup.get<TrackerSurveyRcd>().get(surveys);
-      iSetup.get<TrackerSurveyErrorRcd>().get(surveyErrors);
+      iSetup.get<TrackerSurveyErrorExtendedRcd>().get(surveyErrors);
       
       theSurveyIndex  = 0;
       theSurveyValues = &*surveys;
@@ -732,9 +745,9 @@ void AlignmentProducer::readInSurveyRcds( const edm::EventSetup& iSetup ){
       edm::ESHandle<SurveyErrors> cscSurveyErrors;
       
       iSetup.get<DTSurveyRcd>().get(dtSurveys);
-      iSetup.get<DTSurveyErrorRcd>().get(dtSurveyErrors);
+      iSetup.get<DTSurveyErrorExtendedRcd>().get(dtSurveyErrors);
       iSetup.get<CSCSurveyRcd>().get(cscSurveys);
-      iSetup.get<CSCSurveyErrorRcd>().get(cscSurveyErrors);
+      iSetup.get<CSCSurveyErrorExtendedRcd>().get(cscSurveyErrors);
       
       theSurveyIndex  = 0;
       theSurveyValues = &*dtSurveys;
@@ -766,7 +779,7 @@ void AlignmentProducer::applyDB(G* geometry, const edm::EventSetup &iSetup,
 {
   // 'G' is the geometry class for that DB should be applied,
   // 'Rcd' is the record class for its Alignments 
-  // 'ErrRcd' is the record class for its AlignmentErrors
+  // 'ErrRcd' is the record class for its AlignmentErrorsExtended
   // 'globalCoordinates' are global transformation for this geometry
 
   const Rcd & record = iSetup.get<Rcd>();
@@ -789,7 +802,7 @@ void AlignmentProducer::applyDB(G* geometry, const edm::EventSetup &iSetup,
   edm::ESHandle<Alignments> alignments;
   record.get(alignments);
 
-  edm::ESHandle<AlignmentErrors> alignmentErrors;
+  edm::ESHandle<AlignmentErrorsExtended> alignmentErrors;
   iSetup.get<ErrRcd>().get(alignmentErrors);
 
   GeometryAligner aligner;
@@ -841,9 +854,9 @@ void AlignmentProducer::writeForRunRange(cond::Time_t time)
     }
 	
     Alignments *alignments = theAlignableTracker->alignments();
-    AlignmentErrors *alignmentErrors = theAlignableTracker->alignmentErrors();
+    AlignmentErrorsExtended *alignmentErrors = theAlignableTracker->alignmentErrors();
     this->writeDB(alignments, "TrackerAlignmentRcd",
-		  alignmentErrors, "TrackerAlignmentErrorRcd", trackerGlobal,
+		  alignmentErrors, "TrackerAlignmentErrorExtendedRcd", trackerGlobal,
 		  time);	
   }
       
@@ -855,16 +868,16 @@ void AlignmentProducer::writeForRunRange(cond::Time_t time)
     }
     // Get alignments+errors, first DT - ownership taken over by writeDB(..), so no delete
     Alignments      *alignments       = theAlignableMuon->dtAlignments();
-    AlignmentErrors *alignmentErrors  = theAlignableMuon->dtAlignmentErrors();
+    AlignmentErrorsExtended *alignmentErrors  = theAlignableMuon->dtAlignmentErrorsExtended();
     this->writeDB(alignments, "DTAlignmentRcd",
-		  alignmentErrors, "DTAlignmentErrorRcd", muonGlobal,
+		  alignmentErrors, "DTAlignmentErrorExtendedRcd", muonGlobal,
 		  time);
     
     // Get alignments+errors, now CSC - ownership taken over by writeDB(..), so no delete
     alignments       = theAlignableMuon->cscAlignments();
-    alignmentErrors  = theAlignableMuon->cscAlignmentErrors();
+    alignmentErrors  = theAlignableMuon->cscAlignmentErrorsExtended();
     this->writeDB(alignments, "CSCAlignmentRcd",
-		  alignmentErrors, "CSCAlignmentErrorRcd", muonGlobal,
+		  alignmentErrors, "CSCAlignmentErrorExtendedRcd", muonGlobal,
 		  time);
   }
       
@@ -878,19 +891,19 @@ void AlignmentProducer::writeForRunRange(cond::Time_t time)
 //////////////////////////////////////////////////
 void AlignmentProducer::writeDB(Alignments *alignments,
 				const std::string &alignRcd,
-				AlignmentErrors *alignmentErrors,
+				AlignmentErrorsExtended *alignmentErrors,
 				const std::string &errRcd,
 				const AlignTransform *globalCoordinates,
 				cond::Time_t time) const
 {
   Alignments * tempAlignments = alignments;
-  AlignmentErrors * tempAlignmentErrors = alignmentErrors;
+  AlignmentErrorsExtended * tempAlignmentErrorsExtended = alignmentErrors;
 
   // Call service
   edm::Service<cond::service::PoolDBOutputService> poolDb;
   if (!poolDb.isAvailable()) { // Die if not available
     delete tempAlignments;      // promised to take over ownership...
-    delete tempAlignmentErrors; // dito
+    delete tempAlignmentErrorsExtended; // dito
     throw cms::Exception("NotAvailable") << "PoolDBOutputService not available";
   }
 
@@ -898,12 +911,12 @@ void AlignmentProducer::writeDB(Alignments *alignments,
       && globalCoordinates->transform() != AlignTransform::Transform::Identity) {
 
     tempAlignments = new Alignments();            // temporary storage for
-    tempAlignmentErrors = new AlignmentErrors();  // final alignments and errors
+    tempAlignmentErrorsExtended = new AlignmentErrorsExtended();  // final alignments and errors
 
     GeometryAligner aligner;
     aligner.removeGlobalTransform(alignments, alignmentErrors,
                                   *globalCoordinates,
-                                  tempAlignments, tempAlignmentErrors);
+                                  tempAlignments, tempAlignmentErrorsExtended);
     
     delete alignments;       // have to delete original alignments
     delete alignmentErrors;  // same thing for the errors
@@ -922,11 +935,11 @@ void AlignmentProducer::writeDB(Alignments *alignments,
   }
 
   if (saveApeToDB_) {
-    edm::LogInfo("Alignment") << "Writing AlignmentErrors for run " << time
+    edm::LogInfo("Alignment") << "Writing AlignmentErrorsExtended for run " << time
                               << " to " << errRcd << ".";
-    poolDb->writeOne<AlignmentErrors>(tempAlignmentErrors, time, errRcd);
+    poolDb->writeOne<AlignmentErrorsExtended>(tempAlignmentErrorsExtended, time, errRcd);
   } else { // poolDb->writeOne(..) takes over 'alignmentErrors' ownership,...
-    delete tempAlignmentErrors; // ...otherwise we have to delete, as promised!
+    delete tempAlignmentErrorsExtended; // ...otherwise we have to delete, as promised!
   }
 }
 

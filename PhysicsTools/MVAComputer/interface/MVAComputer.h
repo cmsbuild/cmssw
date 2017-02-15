@@ -9,7 +9,6 @@
 //
 // Author:	Christophe Saout <christophe.saout@cern.ch>
 // Created:     Sat Apr 24 15:18 CEST 2007
-// $Id: MVAComputer.h,v 1.6 2009/01/12 14:18:41 hegner Exp $
 //
 
 #include <iostream>
@@ -93,7 +92,6 @@ class MVAComputer {
 	/// construct a discriminator computer from C++ input stream
 	MVAComputer(std::istream &is);
 
-    private:
 	/** \class InputVar
 	 * \short input variable configuration object
 	 */
@@ -141,8 +139,9 @@ class MVAComputer {
 
 		inline void eval(const VarProcessor *proc, int *outConf,
 		                 double *output, int *loop,
+                                 VarProcessor::LoopCtx& ctx,
 		                 unsigned int offset, unsigned int out) const
-		{ proc->eval(values_, conf_, output, outConf, loop, offset); }
+                { proc->eval(values_, conf_, output, outConf, loop, ctx, offset); }
 
 		inline double output(unsigned int output) const
 		{ return values_[conf_[output]]; }
@@ -160,7 +159,8 @@ class MVAComputer {
 		DerivContext() : n_(0) {}
 
 		void eval(const VarProcessor *proc, int *outConf,
-		          double *output, int *loop,
+		          double *output, int *loop, 
+                          VarProcessor::LoopCtx& ctx,
 		          unsigned int offset, unsigned int out) const;
 
 		double output(unsigned int output,
@@ -176,11 +176,12 @@ class MVAComputer {
 		unsigned int			n_;
 	};
 	
+    private:
 	/// construct processors from calibration and setup variables
 	void setup(const Calibration::MVAComputer *calib);
 
 	/// map variable identifier \a name to the numerical position in the array
-	unsigned int getVariableId(AtomicId name) const;
+	int getVariableId(AtomicId name) const;
 
 	/// evaluate discriminator from flattened variable array
 	template<class T> void evalInternal(T &ctx) const;

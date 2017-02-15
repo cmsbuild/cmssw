@@ -10,7 +10,6 @@
 #include <xercesc/dom/DOMImplementation.hpp>
 #include <xercesc/dom/DOMImplementationRegistry.hpp>
 #include <xercesc/dom/DOMDocument.hpp>
-#include <xercesc/dom/DOMWriter.hpp>
 #include <xercesc/util/XMLString.hpp>
 
 #include <fstream>
@@ -21,13 +20,12 @@ class HcalConstantsXMLWriter
    public:
      HcalConstantsXMLWriter();
      virtual ~HcalConstantsXMLWriter();
-     void writeXML(std::string&, std::vector<int>, std::vector<int>, std::vector<int>, std::vector<int>, std::vector<float>);
+     void writeXML(std::string&, const std::vector<int>&, const std::vector<int>&, const std::vector<int>&, const std::vector<int>&,const std::vector<float>&);
      
      void newCellLine(xercesc::DOMElement*, int,int,int,int,float);
 
    private:   
      std::string hcalfileOut_;
-     xercesc::DOMImplementation* mDom;
      xercesc::DOMDocument* mDoc;
 };
 

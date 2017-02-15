@@ -1,3 +1,4 @@
+#include <iostream>
 #include "L1Trigger/GlobalCaloTrigger/test/L1GctTest.h"
 
 #include "L1Trigger/GlobalCaloTrigger/test/gctTestFunctions.h"
@@ -203,8 +204,6 @@ L1GctTest::endJob() {
 void 
 L1GctTest::configureGct(const edm::EventSetup& c)
 {
-  assert(&c!=0);
-
   // get data from EventSetup
   edm::ESHandle< L1GctJetFinderParams > jfPars ;
   c.get< L1GctJetFinderParamsRcd >().get( jfPars ) ; // which record?

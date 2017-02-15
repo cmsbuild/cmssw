@@ -17,7 +17,7 @@ class MagVolume;
 class RKLocalFieldProvider;
 class CartesianStateAdaptor;
 
-class RKPropagatorInS GCC11_FINAL : public Propagator {
+class RKPropagatorInS final : public Propagator {
 public:
 
   // RKPropagatorInS( PropagationDirection dir = alongMomentum) : Propagator(dir), theVolume(0) {}
@@ -33,25 +33,16 @@ public:
   using Propagator::propagate;
   using Propagator::propagateWithPath;
 
-  virtual TrajectoryStateOnSurface 
-  propagate (const FreeTrajectoryState&, const Plane&) const;
-
-  virtual TrajectoryStateOnSurface 
-  propagate (const FreeTrajectoryState&, const Cylinder&) const;
-
+private:
   virtual std::pair< TrajectoryStateOnSurface, double> 
   propagateWithPath (const FreeTrajectoryState&, const Plane&) const;
 
   virtual std::pair< TrajectoryStateOnSurface, double> 
   propagateWithPath (const FreeTrajectoryState&, const Cylinder&) const;
 
-  TrajectoryStateOnSurface propagate(const TrajectoryStateOnSurface& ts, 
-                                     const Plane& plane) const {
-    return propagateWithPath( *ts.freeState(),plane).first;
-  }
   
 
-
+public:
   virtual Propagator * clone() const;
 
   virtual const MagneticField* magneticField() const {return theVolume;}

@@ -4,7 +4,8 @@
 #include <xercesc/dom/DOMNode.hpp>
 #include <xercesc/dom/DOM.hpp>
 #include <xercesc/parsers/XercesDOMParser.hpp>
-#include <xercesc/util/PlatformUtils.hpp>
+#include "FWCore/Concurrency/interface/Xerces.h"
+#include "Utilities/Xerces/interface/XercesStrUtils.h"
 #include <xercesc/util/XMLString.hpp>
 #include <xercesc/sax/SAXException.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
@@ -24,12 +25,13 @@ using namespace XERCES_CPP_NAMESPACE;
 using namespace xuti;
 using namespace std;
 
-int  EcalTPGTowerStatusXMLTranslator::readXML(const std::string& filename, 
-					  EcalCondHeader& header,
-					  EcalTPGTowerStatus& record){
+int
+EcalTPGTowerStatusXMLTranslator::readXML(const std::string& filename, 
+					 EcalCondHeader& header,
+					 EcalTPGTowerStatus& record){
 
   std::cout << " TPGTowerStatus should not be filled out from an xml file ..." << std::endl;
-  XMLPlatformUtils::Initialize();
+  cms::concurrency::xercesInitialize();
 
   XercesDOMParser* parser = new XercesDOMParser;
   parser->setValidationScheme( XercesDOMParser::Val_Never );
@@ -67,35 +69,35 @@ int  EcalTPGTowerStatusXMLTranslator::readXML(const std::string& filename,
   } 
   */
   delete parser;
-  XMLPlatformUtils::Terminate();
+  cms::concurrency::xercesTerminate();
   return 0;
- }
+}
 
-int EcalTPGTowerStatusXMLTranslator::writeXML(const std::string& filename, 
+int
+EcalTPGTowerStatusXMLTranslator::writeXML(const std::string& filename, 
 					  const EcalCondHeader& header,
 					  const EcalTPGTowerStatus& record){
+  cms::concurrency::xercesInitialize();
+
   std::fstream fs(filename.c_str(),ios::out);
   fs<< dumpXML(header,record);
+
+  cms::concurrency::xercesTerminate();
+
   return 0;  
 }
 
-
 std::string EcalTPGTowerStatusXMLTranslator::dumpXML(const EcalCondHeader& header,const EcalTPGTowerStatus& record){
 
-  XMLPlatformUtils::Initialize();
-  DOMImplementation*  impl =
-    DOMImplementationRegistry::getDOMImplementation(fromNative("LS").c_str());
+  unique_ptr<DOMImplementation> impl( DOMImplementationRegistry::getDOMImplementation(cms::xerces::uStr("LS").ptr()));
+  
+  DOMLSSerializer* writer = impl->createLSSerializer();
+  if( writer->getDomConfig()->canSetParameter( XMLUni::fgDOMWRTFormatPrettyPrint, true ))
+    writer->getDomConfig()->setParameter( XMLUni::fgDOMWRTFormatPrettyPrint, true );
 
-  DOMWriter* writer =static_cast<DOMImplementationLS*>(impl)->createDOMWriter( );
-  writer->setFeature(XMLUni::fgDOMWRTFormatPrettyPrint, true);
-
-  DOMDocumentType* doctype = impl->createDocumentType(fromNative("XML").c_str(), 0, 0 );
+  DOMDocumentType* doctype = impl->createDocumentType(cms::xerces::uStr("XML").ptr(), 0, 0 );
   DOMDocument *    doc = 
-    impl->createDocument( 0, fromNative(TPGTowerStatus_tag).c_str(), doctype );
-
-  doc->setEncoding(fromNative("UTF-8").c_str() );
-  doc->setStandalone(true);
-  doc->setVersion(fromNative("1.0").c_str() );
+    impl->createDocument( 0, cms::xerces::uStr(TPGTowerStatus_tag.c_str()).ptr(), doctype );
 
   DOMElement* root = doc->getDocumentElement();
 
@@ -114,8 +116,11 @@ std::string EcalTPGTowerStatusXMLTranslator::dumpXML(const EcalCondHeader& heade
     }
   }
 
-  std::string dump = toNative(writer->writeToString(*root)); 
-  doc->release(); 
+  std::string dump = cms::xerces::toString(writer->writeToString( root )); 
+  doc->release();
+  doctype->release();
+  writer->release();
+
   return dump;
 }
 

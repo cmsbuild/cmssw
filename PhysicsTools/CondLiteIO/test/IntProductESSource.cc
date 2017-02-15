@@ -8,7 +8,6 @@
 //
 // Original Author:  Chris Jones
 //         Created:  Fri Jun 24 14:39:39 EDT 2005
-// $Id: IntProductESSource.cc,v 1.12 2009/09/23 23:32:07 wmtan Exp $
 //
 
 // system include files
@@ -31,7 +30,7 @@ class IntProductESSource :
 public:
    IntProductESSource(const edm::ParameterSet&);
    
-   std::auto_ptr<edmtest::IntProduct> produce(const IntProductRecord&) ;
+   std::unique_ptr<edmtest::IntProduct> produce(const IntProductRecord&) ;
    
 protected:
    
@@ -73,12 +72,12 @@ IntProductESSource::IntProductESSource(const edm::ParameterSet&)
 // member functions
 //
 
-std::auto_ptr<edmtest::IntProduct> 
+std::unique_ptr<edmtest::IntProduct> 
 IntProductESSource::produce(const IntProductRecord&) {
-   std::auto_ptr<edmtest::IntProduct> data(new edmtest::IntProduct());
+   auto data = std::make_unique<edmtest::IntProduct>();
    data->value = nCalls_;
    ++nCalls_;
-   return data;
+   return std::move(data);
 }
 
 

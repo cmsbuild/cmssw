@@ -1,5 +1,5 @@
 /* This Class Header */
-#include "DQMOffline/Muon/src/DiMuonHistograms.h"
+#include "DQMOffline/Muon/interface/DiMuonHistograms.h"
 
 /* Collaborating Class Header */
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -8,29 +8,19 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/Utilities/interface/Exception.h"
-#include "DataFormats/MuonReco/interface/Muon.h"
-#include "DataFormats/MuonReco/interface/MuonFwd.h" 
-#include "DataFormats/BeamSpot/interface/BeamSpot.h"
-#include "DataFormats/BeamSpot/interface/BeamSpot.h"
-#include "DataFormats/VertexReco/interface/Vertex.h"
-#include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "RecoMuon/TrackingTools/interface/MuonPatternRecoDumper.h"
+#include "DataFormats/TrajectorySeed/interface/TrajectorySeedCollection.h"
+#include "DataFormats/TrackReco/interface/Track.h"
 
-
-using namespace edm;
+#include "DQMServices/Core/interface/DQMStore.h"
+#include "DQMServices/Core/interface/MonitorElement.h"
 
 #include "TLorentzVector.h"
 #include "TFile.h"
 #include <vector>
-#include "math.h"
-
-
-#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
-#include "RecoMuon/TrackingTools/interface/MuonPatternRecoDumper.h"
-
-
-#include "DataFormats/TrajectorySeed/interface/TrajectorySeedCollection.h"
-#include "DataFormats/TrackReco/interface/Track.h"
+#include <cmath>
 
 /* C++ Headers */
 #include <iostream>
@@ -39,21 +29,20 @@ using namespace edm;
 using namespace std;
 using namespace edm;
 
-DiMuonHistograms::DiMuonHistograms(const edm::ParameterSet& pSet, MuonServiceProxy *theService):MuonAnalyzerBase(theService){ 
-  parameters = pSet;
-}
-
-DiMuonHistograms::~DiMuonHistograms() { }
-
-void DiMuonHistograms::beginJob(DQMStore * dbe) {
+DiMuonHistograms::DiMuonHistograms(const edm::ParameterSet& pSet){
   
-  metname = "DiMuonhistograms";
-  LogTrace(metname)<<"[DiMuonHistograms] Parameters initialization";
-  dbe->setCurrentFolder("Muons/DiMuonHistograms");  
+  // initialise parameters:
+  parameters = pSet;
 
-  theMuonCollectionLabel = parameters.getParameter<edm::InputTag>("MuonCollection");
-  bsTag  = parameters.getParameter<edm::InputTag>("bsLabel");
-  vertexTag  = parameters.getParameter<edm::InputTag>("vertexLabel");
+  // counter
+  nTightTight = 0;
+  nGlbGlb     = 0;
+
+  // declare consumes:
+  theMuonCollectionLabel_ = consumes<edm::View<reco::Muon> >  (parameters.getParameter<edm::InputTag>("MuonCollection"));
+  theVertexLabel_          = consumes<reco::VertexCollection>(parameters.getParameter<edm::InputTag>("VertexLabel"));
+
+  theBeamSpotLabel_        = mayConsume<reco::BeamSpot>      (parameters.getParameter<edm::InputTag>("BeamSpotLabel"));
 
   etaBin = parameters.getParameter<int>("etaBin");
   etaBBin = parameters.getParameter<int>("etaBBin");
@@ -69,58 +58,71 @@ void DiMuonHistograms::beginJob(DQMStore * dbe) {
   HighMassMin = parameters.getParameter<double>("HighMassMin");
   HighMassMax = parameters.getParameter<double>("HighMassMax");
 
-  int nBin = 0;
+  theFolder = parameters.getParameter<string>("folder");
+}
+
+DiMuonHistograms::~DiMuonHistograms() { }
+
+void DiMuonHistograms::bookHistograms(DQMStore::IBooker & ibooker,
+				      edm::Run const & /*iRun*/,
+				      edm::EventSetup const & /* iSetup */){
+  
+  ibooker.cd();
+  ibooker.setCurrentFolder(theFolder);  
+
+  int nBin[3] = {etaBin,etaBBin,etaEBin};
+  EtaName[0]  = ""; EtaName[1] = "_Barrel"; EtaName[2] = "_EndCap";
+  test = ibooker.book1D("test","InvMass_{Tight,Tight}",100, 0., 200.);
   for (unsigned int iEtaRegion=0; iEtaRegion<3; iEtaRegion++){
-    if (iEtaRegion==0) { EtaName = "";         nBin = etaBin;} 
-    if (iEtaRegion==1) { EtaName = "_Barrel";  nBin = etaBBin;}
-    if (iEtaRegion==2) { EtaName = "_EndCap";  nBin = etaEBin;}
     
-    GlbGlbMuon_LM.push_back(dbe->book1D("GlbGlbMuon_LM"+EtaName,"InvMass_{GLB,GLB}"+EtaName,nBin, LowMassMin, LowMassMax));
-    TrkTrkMuon_LM.push_back(dbe->book1D("TrkTrkMuon_LM"+EtaName,"InvMass_{TRK,TRK}"+EtaName,nBin, LowMassMin, LowMassMax));
-    StaTrkMuon_LM.push_back(dbe->book1D("StaTrkMuon_LM"+EtaName,"InvMass_{STA,TRK}"+EtaName,nBin, LowMassMin, LowMassMax));
+    GlbGlbMuon_LM.push_back(ibooker.book1D("GlbGlbMuon_LM"+EtaName[iEtaRegion],"InvMass_{GLB,GLB}"+EtaName[iEtaRegion],nBin[iEtaRegion], LowMassMin, LowMassMax));
+    TrkTrkMuon_LM.push_back(ibooker.book1D("TrkTrkMuon_LM"+EtaName[iEtaRegion],"InvMass_{TRK,TRK}"+EtaName[iEtaRegion],nBin[iEtaRegion], LowMassMin, LowMassMax));
+    StaTrkMuon_LM.push_back(ibooker.book1D("StaTrkMuon_LM"+EtaName[iEtaRegion],"InvMass_{STA,TRK}"+EtaName[iEtaRegion],nBin[iEtaRegion], LowMassMin, LowMassMax));
     
-    GlbGlbMuon_HM.push_back(dbe->book1D("GlbGlbMuon_HM"+EtaName,"InvMass_{GLB,GLB}"+EtaName,nBin, HighMassMin, HighMassMax));
-    TrkTrkMuon_HM.push_back(dbe->book1D("TrkTrkMuon_HM"+EtaName,"InvMass_{TRK,TRK}"+EtaName,nBin, HighMassMin, HighMassMax));
-    StaTrkMuon_HM.push_back(dbe->book1D("StaTrkMuon_HM"+EtaName,"InvMass_{STA,TRK}"+EtaName,nBin, HighMassMin, HighMassMax));
+    GlbGlbMuon_HM.push_back(ibooker.book1D("GlbGlbMuon_HM"+EtaName[iEtaRegion],"InvMass_{GLB,GLB}"+EtaName[iEtaRegion],nBin[iEtaRegion], HighMassMin, HighMassMax));
+    TrkTrkMuon_HM.push_back(ibooker.book1D("TrkTrkMuon_HM"+EtaName[iEtaRegion],"InvMass_{TRK,TRK}"+EtaName[iEtaRegion],nBin[iEtaRegion], HighMassMin, HighMassMax));
+    StaTrkMuon_HM.push_back(ibooker.book1D("StaTrkMuon_HM"+EtaName[iEtaRegion],"InvMass_{STA,TRK}"+EtaName[iEtaRegion],nBin[iEtaRegion], HighMassMin, HighMassMax));
     
     // arround the Z peak
-    TightTightMuon.push_back(dbe->book1D("TightTightMuon"+EtaName,"InvMass_{Tight,Tight}"+EtaName,nBin, 55.0, 125.0));
+    TightTightMuon.push_back(ibooker.book1D("TightTightMuon"+EtaName[iEtaRegion],"InvMass_{Tight,Tight}"+EtaName[iEtaRegion],nBin[iEtaRegion], 55.0, 125.0));
 
     // low-mass resonances
-    SoftSoftMuon.push_back(dbe->book1D("SoftSoftMuon"+EtaName,"InvMass_{Soft,Soft}"+EtaName,nBin, 5.0, 55.0));
+    SoftSoftMuon.push_back(ibooker.book1D("SoftSoftMuon"+EtaName[iEtaRegion],"InvMass_{Soft,Soft}"+EtaName[iEtaRegion],nBin[iEtaRegion], 0.0, 55.0));
   }
 }
-void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& iSetup) {
 
+void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& iSetup){
 
-  // ==========================================================
+  LogTrace(metname)<<"[DiMuonHistograms] Analyze the mu in different eta regions";
+  edm::Handle<edm::View<reco::Muon> > muons; 
+  iEvent.getByToken(theMuonCollectionLabel_, muons);
+
+  // =================================================================================
   // Look for the Primary Vertex (and use the BeamSpot instead, if you can't find it):
-
   reco::Vertex::Point posVtx;
   reco::Vertex::Error errVtx;
- 
   unsigned int theIndexOfThePrimaryVertex = 999.;
- 
+  
   edm::Handle<reco::VertexCollection> vertex;
-  iEvent.getByLabel(vertexTag, vertex);
-
- if ( vertex.isValid() ){
-  for (unsigned int ind=0; ind<vertex->size(); ++ind) {
-    if ( (*vertex)[ind].isValid() && !((*vertex)[ind].isFake()) ) {
-      theIndexOfThePrimaryVertex = ind;
-      break;
+  iEvent.getByToken(theVertexLabel_, vertex);
+  if (vertex.isValid()){
+    for (unsigned int ind=0; ind<vertex->size(); ++ind) {
+      if ( (*vertex)[ind].isValid() && !((*vertex)[ind].isFake()) ) {
+	theIndexOfThePrimaryVertex = ind;
+	break;
+      }
     }
   }
- }
+
   if (theIndexOfThePrimaryVertex<100) {
     posVtx = ((*vertex)[theIndexOfThePrimaryVertex]).position();
     errVtx = ((*vertex)[theIndexOfThePrimaryVertex]).error();
-  }   else {
+  }   
+  else {
     LogInfo("RecoMuonValidator") << "reco::PrimaryVertex not found, use BeamSpot position instead\n";
-  
-    edm::Handle<reco::BeamSpot> recoBeamSpotHandle;
-    iEvent.getByLabel(bsTag,recoBeamSpotHandle);
     
+    edm::Handle<reco::BeamSpot> recoBeamSpotHandle;
+    iEvent.getByToken(theBeamSpotLabel_,recoBeamSpotHandle);
     reco::BeamSpot bs = *recoBeamSpotHandle;
     
     posVtx = bs.position();
@@ -128,21 +130,9 @@ void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& 
     errVtx(1,1) = bs.BeamWidthY();
     errVtx(2,2) = bs.sigmaZ();
   }
-  const reco::Vertex thePrimaryVertex(posVtx,errVtx);
-  // ==========================================================
-
-
-
-
-  LogTrace(metname)<<"[DiMuonHistograms] Analyze the mu in different eta regions";
-  edm::Handle<reco::MuonCollection> muons;
-  iEvent.getByLabel(theMuonCollectionLabel, muons);
-
-  reco::BeamSpot beamSpot;
-  Handle<reco::BeamSpot> beamSpotHandle;
-  iEvent.getByLabel("offlineBeamSpot", beamSpotHandle);
-  beamSpot = *beamSpotHandle;
-
+  
+  const reco::Vertex vtx(posVtx,errVtx);
+  
   if(!muons.isValid()) return;
 
   // Loop on muon collection
@@ -150,19 +140,20 @@ void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& 
   float charge = 99.;
   float InvMass = -99.;
 
-  for (reco::MuonCollection::const_iterator recoMu1 = muons->begin(); recoMu1!=muons->end(); ++recoMu1) {
+
+  for (edm::View<reco::Muon>::const_iterator muon1 = muons->begin(); muon1 != muons->end(); ++muon1){
     LogTrace(metname)<<"[DiMuonHistograms] loop over 1st muon"<<endl;
 
     // Loop on second muons to fill invariant mass plots
-    for (reco::MuonCollection::const_iterator recoMu2 = recoMu1; recoMu2!=muons->end(); ++recoMu2){ 
+    for (edm::View<reco::Muon>::const_iterator muon2 = muon1; muon2 != muons->end(); ++muon2){
       LogTrace(metname)<<"[DiMuonHistograms] loop over 2nd muon"<<endl;
-      if (recoMu1==recoMu2) continue;
+      if (muon1==muon2) continue;
       
       // Global-Global Muon
-      if (recoMu1->isGlobalMuon() && recoMu2->isGlobalMuon()) {
+      if (muon1->isGlobalMuon() && muon2->isGlobalMuon()) {
 	LogTrace(metname)<<"[DiMuonHistograms] Glb-Glb pair"<<endl;
-	reco::TrackRef recoCombinedGlbTrack1 = recoMu1->combinedMuon();
-	reco::TrackRef recoCombinedGlbTrack2 = recoMu2->combinedMuon();
+	reco::TrackRef recoCombinedGlbTrack1 = muon1->combinedMuon();
+	reco::TrackRef recoCombinedGlbTrack2 = muon2->combinedMuon();
 	Mu1.SetPxPyPzE(recoCombinedGlbTrack1->px(), recoCombinedGlbTrack1->py(),recoCombinedGlbTrack1->pz(), recoCombinedGlbTrack1->p());
 	Mu2.SetPxPyPzE(recoCombinedGlbTrack2->px(), recoCombinedGlbTrack2->py(),recoCombinedGlbTrack2->pz(), recoCombinedGlbTrack2->p());
 	
@@ -182,29 +173,30 @@ void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& 
 	  }
 	}
 	// Also Tight-Tight Muon Selection
-
-	if ( muon::isTightMuon(*recoMu1, thePrimaryVertex)  && 
-	     muon::isTightMuon(*recoMu2, thePrimaryVertex) ) { 
-  	  
+	if ( muon::isTightMuon(*muon1, vtx)  && 
+	     muon::isTightMuon(*muon2, vtx) ) { 
+	  test->Fill(InvMass);
 	  LogTrace(metname)<<"[DiMuonHistograms] Tight-Tight pair"<<endl;
-	  for (unsigned int iEtaRegion=0; iEtaRegion<3; iEtaRegion++){
-	    if (iEtaRegion==0) {EtaCutMin= 0.;         EtaCutMax=2.4;       }
-	    if (iEtaRegion==1) {EtaCutMin= etaBMin;    EtaCutMax=etaBMax;   } 
-	    if (iEtaRegion==2) {EtaCutMin= etaECMin;   EtaCutMax=etaECMax;  }
-
-	    if(fabs(recoCombinedGlbTrack1->eta())>EtaCutMin && fabs(recoCombinedGlbTrack1->eta())<EtaCutMax && 
-	       fabs(recoCombinedGlbTrack2->eta())>EtaCutMin && fabs(recoCombinedGlbTrack2->eta())<EtaCutMax){
-	      if (InvMass > 55. && InvMass < 125.) TightTightMuon[iEtaRegion]->Fill(InvMass);
+	  if (charge < 0){
+	    for (unsigned int iEtaRegion=0; iEtaRegion<3; iEtaRegion++){
+	      if (iEtaRegion==0) {EtaCutMin= 0.;         EtaCutMax=2.4;       }
+	      if (iEtaRegion==1) {EtaCutMin= etaBMin;    EtaCutMax=etaBMax;   } 
+	      if (iEtaRegion==2) {EtaCutMin= etaECMin;   EtaCutMax=etaECMax;  }
+	      
+	      if(fabs(recoCombinedGlbTrack1->eta())>EtaCutMin && fabs(recoCombinedGlbTrack1->eta())<EtaCutMax && 
+		 fabs(recoCombinedGlbTrack2->eta())>EtaCutMin && fabs(recoCombinedGlbTrack2->eta())<EtaCutMax){
+		if (InvMass > 55. && InvMass < 125.) TightTightMuon[iEtaRegion]->Fill(InvMass);
+	      }
 	    }
 	  }
 	}
       }
     
       // Now check for STA-TRK 
-      if (recoMu2->isStandAloneMuon() && recoMu1->isTrackerMuon()) {
+      if (muon2->isStandAloneMuon() && muon1->isTrackerMuon()) {
 	LogTrace(metname)<<"[DiMuonHistograms] STA-Trk pair"<<endl;
-	reco::TrackRef recoStaTrack = recoMu2->standAloneMuon();
-	reco::TrackRef recoTrack    = recoMu1->track();
+	reco::TrackRef recoStaTrack = muon2->standAloneMuon();
+	reco::TrackRef recoTrack    = muon1->track();
 	Mu2.SetPxPyPzE(recoStaTrack->px(), recoStaTrack->py(),recoStaTrack->pz(), recoStaTrack->p());
 	Mu1.SetPxPyPzE(recoTrack->px(), recoTrack->py(),recoTrack->pz(), recoTrack->p());
 
@@ -224,10 +216,10 @@ void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& 
 	  }
 	}
       }
-      if (recoMu1->isStandAloneMuon() && recoMu2->isTrackerMuon()) {
+      if (muon1->isStandAloneMuon() && muon2->isTrackerMuon()) {
 	LogTrace(metname)<<"[DiMuonHistograms] STA-Trk pair"<<endl;
-	reco::TrackRef recoStaTrack = recoMu1->standAloneMuon();
-	reco::TrackRef recoTrack    = recoMu2->track();
+	reco::TrackRef recoStaTrack = muon1->standAloneMuon();
+	reco::TrackRef recoTrack    = muon2->track();
 	Mu1.SetPxPyPzE(recoStaTrack->px(), recoStaTrack->py(),recoStaTrack->pz(), recoStaTrack->p());
 	Mu2.SetPxPyPzE(recoTrack->px(), recoTrack->py(),recoTrack->pz(), recoTrack->p());
 
@@ -249,10 +241,10 @@ void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& 
       }
 
       // TRK-TRK dimuon 
-      if (recoMu1->isTrackerMuon() && recoMu2->isTrackerMuon()) {
+      if (muon1->isTrackerMuon() && muon2->isTrackerMuon()) {
 	LogTrace(metname)<<"[DiMuonHistograms] Trk-Trk dimuon pair"<<endl;
-	reco::TrackRef recoTrack2 = recoMu2->track();
-	reco::TrackRef recoTrack1 = recoMu1->track();
+	reco::TrackRef recoTrack2 = muon2->track();
+	reco::TrackRef recoTrack1 = muon1->track();
 	Mu2.SetPxPyPzE(recoTrack2->px(), recoTrack2->py(),recoTrack2->pz(), recoTrack2->p());
 	Mu1.SetPxPyPzE(recoTrack1->px(), recoTrack1->py(),recoTrack1->pz(), recoTrack1->p());
 	
@@ -275,8 +267,8 @@ void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& 
 
 	LogTrace(metname)<<"[DiMuonHistograms] Soft-Soft pair"<<endl;
 
-	if (muon::isSoftMuon(*recoMu1, thePrimaryVertex)  && 
-	    muon::isSoftMuon(*recoMu2, thePrimaryVertex) ) { 
+	if (muon::isSoftMuon(*muon1, vtx)  && 
+	    muon::isSoftMuon(*muon2, vtx) ) { 
 	  
 	  if (charge < 0) {
 	    InvMass = (Mu1+Mu2).M();
@@ -295,5 +287,7 @@ void DiMuonHistograms::analyze(const edm::Event & iEvent,const edm::EventSetup& 
       }
     } //muon2
   } //Muon1
+   
+
 }
 

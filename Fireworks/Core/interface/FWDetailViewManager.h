@@ -26,10 +26,15 @@ class FWDetailViewBase;
 class FWModelId;
 class TEveWindow;
 
+namespace fireworks
+{
+class Context;
+}
+
 class FWDetailViewManager
 {
 public:
-   FWDetailViewManager(FWColorManager*);
+   FWDetailViewManager(fireworks::Context*);
    virtual ~FWDetailViewManager();
 
    std::vector<std::string> detailViewsFor(const FWModelId&) const;
@@ -38,16 +43,6 @@ public:
    void colorsChanged();
    void newEventCallback();
    void eveWindowDestroyed(TEveWindow*);
-
-protected:
-   FWColorManager                *m_colorManager;
-
-private:
-
-   FWDetailViewManager(const FWDetailViewManager&);    // stop default
-   const FWDetailViewManager& operator=(const FWDetailViewManager&);    // stop default
-
-   std::vector<std::string> findViewersFor(const std::string&) const;
 
    struct ViewFrame 
    {
@@ -58,6 +53,16 @@ private:
       ViewFrame(TEveCompositeFrameInMainFrame *f, FWDetailViewBase* v, TEveWindow* w):
          m_eveFrame(f), m_detailView(v), m_eveWindow(w) {}
    };
+
+protected:
+   fireworks::Context* m_context;
+
+private:
+
+   FWDetailViewManager(const FWDetailViewManager&);    // stop default
+   const FWDetailViewManager& operator=(const FWDetailViewManager&);    // stop default
+
+   std::vector<std::string> findViewersFor(const std::string&) const;
 
    typedef std::vector<ViewFrame> vViews_t;
    typedef vViews_t::iterator     vViews_i;

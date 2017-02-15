@@ -11,6 +11,7 @@
 #include "DQMServices/Core/interface/MonitorElement.h"
 #include "FWCore/Framework/interface/LuminosityBlock.h"
 #include "DQM/L1TMonitorClient/interface/L1TOccupancyClientHistogramService.h"
+#include "DQMServices/Core/interface/DQMEDHarvester.h"
 
 #include <memory>
 #include <iostream>
@@ -26,7 +27,7 @@
 #include <TNamed.h>
 #include <TRandom3.h>
 
-class L1TOccupancyClient: public edm::EDAnalyzer {
+class L1TOccupancyClient: public DQMEDHarvester {
 
   public:
 
@@ -37,23 +38,13 @@ class L1TOccupancyClient: public edm::EDAnalyzer {
     virtual ~L1TOccupancyClient();
  
   protected:
-
-    /// BeginJob
-    void beginJob(void);
-    void endJob();
-
-    /// BeginRun
-    void beginRun(const edm::Run& r, const edm::EventSetup& c);
-    void endRun  (const edm::Run& r, const edm::EventSetup& c);
-
-    void beginLuminosityBlock(const edm::LuminosityBlock& lumiSeg,const edm::EventSetup& context);
-    void endLuminosityBlock  (const edm::LuminosityBlock& lumiSeg,const edm::EventSetup& c);       // DQM Client Diagnostic
-
-    /// Fake Analyze
-    void analyze(const edm::Event& e, const edm::EventSetup& c) ;
+    
+    void dqmEndJob  (DQMStore::IBooker &ibooker, DQMStore::IGetter &igetter)override;
+    void book   (DQMStore::IBooker &ibooker, DQMStore::IGetter &igetter);
+    void dqmEndLuminosityBlock  (DQMStore::IBooker &ibooker, DQMStore::IGetter &igetter, const edm::LuminosityBlock& lumiSeg,const edm::EventSetup& c) override;       // DQM Client Diagnostic
   
     //DQM test routines
-    double xySymmetry(edm::ParameterSet ps, 
+    double xySymmetry(const edm::ParameterSet& ps, 
                      std::string test_name, 
                      std::vector<std::pair<int,double> >& deadChannels, 
                      std::vector<std::pair<int,double> >& statDev, 
@@ -62,9 +53,8 @@ class L1TOccupancyClient: public edm::EDAnalyzer {
   private:
 
     edm::ParameterSet                   parameters_; //parameter set from python
-    DQMStore*                           dbe_;        //store service
-    L1TOccupancyClientHistogramService* hservice_;   //histogram service
-    TFile*                              file_;       //output file for test results
+    L1TOccupancyClientHistogramService*  hservice_;   //histogram service
+    TFile*                               file_;       //output file for test results
 
     // bool
     bool verbose_;    //verbose mode
@@ -86,7 +76,7 @@ class L1TOccupancyClient: public edm::EDAnalyzer {
                          int nBins, 
                          int axis, 
                          double avg, 
-                         edm::ParameterSet ps,
+                         const edm::ParameterSet& ps,
                          std::vector<std::pair<int,double> >& deadChannels);
 
     // Gets the bin-number of a bin with content and on axis
@@ -96,9 +86,9 @@ class L1TOccupancyClient: public edm::EDAnalyzer {
                                            int axis);  
 
     // Puts out the bad and masked channels of a specific test to h2f	
-    void printDeadChannels(std::vector<std::pair<int,double> > deadChannels, 
+    void printDeadChannels(const std::vector<std::pair<int,double> >& deadChannels, 
                            TH2F* h2f, 
-                           std::vector<std::pair<int,double> > statDev, 
+                           const std::vector<std::pair<int,double> >& statDev, 
                            std::string test_name); 
 
     // Gets the average (avrgMode=1 arithmetic, avrgMode=2 median) for a specific binStrip in histo h2f for a specific test

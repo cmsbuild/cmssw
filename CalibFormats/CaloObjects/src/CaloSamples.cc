@@ -3,6 +3,8 @@
 #include <math.h>
 #include <iostream>
 
+const int CaloSamples::MAXSAMPLES;
+
 CaloSamples::CaloSamples() : id_(), size_(0), presamples_(0), preciseSize_(0), precisePresamples_(0) { setBlank() ; }
 
 CaloSamples::CaloSamples(const DetId& id, int size) :
@@ -32,14 +34,14 @@ void CaloSamples::setPresamples( int pre ) {
 
 CaloSamples& CaloSamples::scale( double value ) {
    for (int i=0; i<MAXSAMPLES; i++) data_[i]*=value;
-   for (std::vector<float>::iterator j=preciseData_.begin() ; j!=preciseData_.end(); j++)
+   for (std::vector<float>::iterator j=preciseData_.begin() ; j!=preciseData_.end(); ++j)
      (*j)*=value;
    return (*this);
 }
 
 CaloSamples& CaloSamples::operator+=(double value) {  
    for (int i=0; i<MAXSAMPLES; i++) data_[i]+=value;
-   for (std::vector<float>::iterator j=preciseData_.begin() ; j!=preciseData_.end(); j++)
+   for (std::vector<float>::iterator j=preciseData_.begin() ; j!=preciseData_.end(); ++j)
      (*j)+=value*deltaTprecise_/25.0; // note that the scale is conserved!
   return (*this);
 }
@@ -102,20 +104,20 @@ CaloSamples::setBlank() // keep id, presamples, size but zero out data
 }
 
 std::ostream& operator<<(std::ostream& s, const CaloSamples& samples) {
-  s << "DetId=" << samples.id();
+  s << "DetId " << samples.id();
   // print out every so many precise samples
   float preciseStep = samples.preciseSize()/samples.size();
   s << ", "<<  samples.size() << " samples";
   if (preciseStep > 0) 
     s << ", " << samples.preciseSize() << " preciseSamples" 
-      << ", " << preciseStep << " precise step";
+      << ", " << preciseStep << " preciseStep";
   s << '\n';
   for (int i=0; i<samples.size(); i++) {
-    s << i << ":" << samples[i];
-    int precisei = i*preciseStep;
-    if(precisei < samples.preciseSize()) {
-      s << " " << samples.preciseAt(precisei) ;
-    }
+    s << i << ":" << samples[i] << " precise:";
+    int precise_start(i*preciseStep), precise_end(precise_start + preciseStep);
+    for (int j(precise_start); ((j<precise_end) && (j< samples.preciseSize()));
+	 ++j)
+      s << " " << samples.preciseAt(j);
     s << std::endl;
   }
   return s;

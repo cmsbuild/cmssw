@@ -58,6 +58,8 @@ class CaloTowersMerger : public edm::EDProducer {
       // ----------member data ---------------------------
 
   edm::InputTag regularTowerTag,extraTowerTag;
+  edm::EDGetTokenT<CaloTowerCollection> tok_reg_;
+  edm::EDGetTokenT<CaloTowerCollection> tok_ext_;
 };
 
 //
@@ -76,6 +78,10 @@ CaloTowersMerger::CaloTowersMerger(const edm::ParameterSet& iConfig)
 {
   regularTowerTag=iConfig.getParameter<edm::InputTag>("regularTowerTag");
   extraTowerTag=iConfig.getParameter<edm::InputTag>("extraTowerTag");
+
+  // register for data access
+  tok_reg_ = consumes<CaloTowerCollection>(regularTowerTag);
+  tok_ext_ = consumes<CaloTowerCollection>(extraTowerTag);
 
    //register your products
    produces<CaloTowerCollection>();
@@ -101,26 +107,22 @@ CaloTowersMerger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
   edm::Handle<CaloTowerCollection> regTower,extraTower;
 
-  iEvent.getByLabel(regularTowerTag,regTower);
-  iEvent.getByLabel(extraTowerTag,extraTower);
-
-  std::auto_ptr<CaloTowerCollection> output;
+  iEvent.getByToken(tok_reg_,regTower);
+  iEvent.getByToken(tok_ext_,extraTower);
 
   if (!regTower.isValid() && !extraTower.isValid()){
     edm::LogError("CaloTowersMerger")<<"both input tag:"<<regularTowerTag<<" and "<<extraTowerTag<<" are invalid. empty merged collection";
-    output.reset(new CaloTowerCollection());
-    iEvent.put(output);
+    iEvent.put(std::make_unique<CaloTowerCollection>());
     return;
   }else if (!regTower.isValid()  || !extraTower.isValid()){
     if (!regTower.isValid() && extraTower.isValid())
       regTower=extraTower;
-    output.reset(new CaloTowerCollection(*regTower));
-    iEvent.put(output);
+    iEvent.put(std::make_unique<CaloTowerCollection>(*regTower));
     return;
   }
   else{
     //both valid input collections: merging
-    output.reset(new CaloTowerCollection());
+    auto output = std::make_unique<CaloTowerCollection>();
     output->reserve(regTower->size()+extraTower->size());
   
     CaloTowerCollection::const_iterator rt_begin = regTower->begin();
@@ -159,7 +161,7 @@ CaloTowersMerger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	//copy the extra tower over
 	output->push_back(*et_it);
     }
-    iEvent.put(output);
+    iEvent.put(std::move(output));
   }
   
 }

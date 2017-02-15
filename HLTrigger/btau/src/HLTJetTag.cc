@@ -1,7 +1,7 @@
 /** \class HLTJetTag
  *
- *  This class is an HLTFilter (a spcialized EDFilter) implementing 
- *  tagged multi-jet trigger for b and tau. 
+ *  This class is an HLTFilter (a spcialized EDFilter) implementing
+ *  tagged multi-jet trigger for b and tau.
  *  It should be run after the normal multi-jet trigger.
  *
  *
@@ -9,6 +9,9 @@
  *  \maintainer Andrea Bocci
  *
  */
+
+#include <vector>
+#include <string>
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "DataFormats/Common/interface/Handle.h"
@@ -19,12 +22,10 @@
 #include "HLTrigger/HLTcore/interface/HLTFilter.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
+#include "HLTrigger/HLTcore/interface/defaultModuleLabel.h"
 
 #include "HLTJetTag.h"
 
-#include<vector>
-#include<string>
-#include<typeinfo>
 
 //
 // constructors and destructor
@@ -33,14 +34,14 @@
 template<typename T>
 HLTJetTag<T>::HLTJetTag(const edm::ParameterSet & config) : HLTFilter(config),
   m_Jets   (config.getParameter<edm::InputTag>("Jets") ),
-  m_JetsToken(consumes<std::vector<T> >(m_Jets)),
   m_JetTags(config.getParameter<edm::InputTag>("JetTags") ),
-  m_JetTagsToken(consumes<reco::JetTagCollection>(m_JetTags)),
   m_MinTag (config.getParameter<double>        ("MinTag") ),
   m_MaxTag (config.getParameter<double>        ("MaxTag") ),
   m_MinJets(config.getParameter<int>           ("MinJets") ),
   m_TriggerType(config.getParameter<int>       ("TriggerType") )
 {
+  m_JetsToken = consumes<std::vector<T> >(m_Jets),
+  m_JetTagsToken = consumes<reco::JetTagCollection>(m_JetTags),
 
   edm::LogInfo("") << " (HLTJetTag) trigger cuts: " << std::endl
                    << "\ttype of        jets used: " << m_Jets.encode() << std::endl
@@ -66,7 +67,7 @@ HLTJetTag<T>::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   desc.add<double>("MaxTag",999999.0);
   desc.add<int>("MinJets",1);
   desc.add<int>("TriggerType",0);
-  descriptions.add(std::string("hlt")+std::string(typeid(HLTJetTag<T>).name()),desc);
+  descriptions.add(defaultModuleLabel<HLTJetTag<T>>(), desc);
 }
 
 //
@@ -77,7 +78,7 @@ HLTJetTag<T>::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
 // ------------ method called to produce the data  ------------
 template<typename T>
 bool
-HLTJetTag<T>::hltFilter(edm::Event& event, const edm::EventSetup& setup, trigger::TriggerFilterObjectWithRefs & filterproduct)
+HLTJetTag<T>::hltFilter(edm::Event& event, const edm::EventSetup& setup, trigger::TriggerFilterObjectWithRefs & filterproduct) const
 {
   using namespace std;
   using namespace edm;
@@ -87,11 +88,11 @@ HLTJetTag<T>::hltFilter(edm::Event& event, const edm::EventSetup& setup, trigger
   typedef Ref<TCollection> TRef;
 
   edm::Handle<TCollection> h_Jets;
-  event.getByLabel(m_Jets, h_Jets);
+  event.getByToken(m_JetsToken, h_Jets);
   if (saveTags()) filterproduct.addCollectionTag(m_Jets);
 
   edm::Handle<JetTagCollection> h_JetTags;
-  event.getByLabel(m_JetTags, h_JetTags);
+  event.getByToken(m_JetTagsToken, h_JetTags);
 
   // check if the product this one depends on is available
   auto const & handle = h_JetTags;
@@ -99,7 +100,7 @@ HLTJetTag<T>::hltFilter(edm::Event& event, const edm::EventSetup& setup, trigger
   if (not dependent.isNull() and not dependent.hasCache()) {
     // only an empty AssociationVector can have a invalid dependent collection
     edm::Provenance const & dependent_provenance = event.getProvenance(dependent.id());
-    if (dependent_provenance.constBranchDescription().dropped())
+    if (dependent_provenance.branchDescription().dropped())
       // FIXME the error message should be made prettier
       throw edm::Exception(edm::errors::ProductNotFound) << "Product " << handle.provenance()->branchName() << " requires product " << dependent_provenance.branchName() << ", which has been dropped";
   }

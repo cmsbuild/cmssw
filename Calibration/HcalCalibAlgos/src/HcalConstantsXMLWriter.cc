@@ -7,7 +7,7 @@
 #include <xercesc/dom/DOM.hpp>
 #include <xercesc/dom/DOMCharacterData.hpp>
 #include <xercesc/parsers/XercesDOMParser.hpp>
-#include <xercesc/util/PlatformUtils.hpp>
+#include "FWCore/Concurrency/interface/Xerces.h"
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
 #include <xercesc/util/XMLUni.hpp>
 #include <xercesc/util/XMLURL.hpp>
@@ -25,7 +25,7 @@ HcalConstantsXMLWriter::HcalConstantsXMLWriter()
 HcalConstantsXMLWriter::~HcalConstantsXMLWriter()
 {
 }
-void HcalConstantsXMLWriter::writeXML(string& newfile0, vector<int> detvec,vector<int> etavec,vector<int> phivec, vector<int> depthvec,vector<float> scalevec)
+void HcalConstantsXMLWriter::writeXML(string& newfile0,const vector<int>& detvec,const vector<int>& etavec,const vector<int>& phivec,const vector<int>& depthvec,const vector<float>& scalevec)
 {
    int nn = newfile0.size();
    char newfile[99]; 
@@ -45,7 +45,7 @@ void HcalConstantsXMLWriter::writeXML(string& newfile0, vector<int> detvec,vecto
    XMLCh tempStr[100];
    
    XMLString::transcode ("Core",tempStr,99);
-   mDom = DOMImplementationRegistry::getDOMImplementation (tempStr);
+   unique_ptr<DOMImplementation> mDom( DOMImplementationRegistry::getDOMImplementation (tempStr));
 
    XMLString::transcode("CalibrationConstants", tempStr, 99);
    mDoc = mDom->createDocument(
@@ -54,8 +54,8 @@ void HcalConstantsXMLWriter::writeXML(string& newfile0, vector<int> detvec,vecto
                                 0);                   // document type object (DTD).
 
    StreamOutFormatTarget formTarget (fOut);
-   DOMWriter* domWriter = mDom->createDOMWriter();
-   domWriter->setFeature(XMLUni::fgDOMWRTFormatPrettyPrint, true);
+   DOMLSSerializer* domWriter = mDom->createLSSerializer();
+   domWriter->getDomConfig()->setParameter(XMLUni::fgDOMWRTFormatPrettyPrint, true);
    DOMElement*   root = mDoc->getDocumentElement();
 
    XMLString::transcode("Hcal", tempStr, 99);
@@ -73,9 +73,13 @@ void HcalConstantsXMLWriter::writeXML(string& newfile0, vector<int> detvec,vecto
    }
  
    cout<<" Write Doc "<<theDOMVec.size()<<endl;
-   domWriter->writeNode (&formTarget, *mDoc);
+   DOMLSOutput* output= mDom->createLSOutput();
+   output->setByteStream(&formTarget);
+   domWriter->write (mDoc, output);
    cout<<" End of Writting "<<endl;
    mDoc->release ();
+   output->release();
+   domWriter->release();
 }
 
 void HcalConstantsXMLWriter::newCellLine(DOMElement* detelem, int det, int eta, int phi, int depth,  float scale)

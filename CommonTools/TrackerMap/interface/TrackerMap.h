@@ -67,13 +67,14 @@ class TmApvPair;
 class EventSetup;
 class TmCcu;
 class TmPsu;
+class TrackerTopology;
 
 class TrackerMap {
  public:
   //TrackerMap(){TrackerMap(" ");};   //!< default constructor
   TrackerMap(std::string s=" ",int xsize1=340,int ysize1=200);
   TrackerMap(const edm::ParameterSet & iConfig);
-  TrackerMap(const edm::ParameterSet & iConfig,const SiStripFedCabling* tkFed);
+  TrackerMap(const edm::ParameterSet & iConfig,const SiStripFedCabling* tkFed,const TrackerTopology* const topology);
   ~TrackerMap();  //!< default destructor
   
   void build();
@@ -94,9 +95,9 @@ class TrackerMap {
   void save_as_HVtrackermap(bool print_total=true,float minval=0., float maxval=0.,std::string s="psu_svgmap.svg",int width=1500, int height=800);
   void drawApvPair( int crate, int numfed_incrate, bool total, TmApvPair* apvPair,std::ofstream * file,bool useApvPairValue);
   void drawCcu( int crate, int numfed_incrate, bool total, TmCcu* ccu,std::ofstream * file,bool useCcuValue);
-  void drawPsu(int rack,int numcrate_inrack, bool print_total, TmPsu* psu,ofstream * svgfile,bool usePsuValue);
-  void drawHV2(int rack,int numcrate_inrack, bool print_total, TmPsu* psu,ofstream * svgfile,bool usePsuValue);
-  void drawHV3(int rack,int numcrate_inrack, bool print_total, TmPsu* psu,ofstream * svgfile,bool usePsuValue);
+  void drawPsu(int rack,int numcrate_inrack, bool print_total, TmPsu* psu,std::ofstream * svgfile,bool usePsuValue);
+  void drawHV2(int rack,int numcrate_inrack, bool print_total, TmPsu* psu,std::ofstream * svgfile,bool usePsuValue);
+  void drawHV3(int rack,int numcrate_inrack, bool print_total, TmPsu* psu,std::ofstream * svgfile,bool usePsuValue);
   void fill_current_val(int idmod, float current_val );
   void fill(int layer , int ring, int nmod, float x );
   void fill(int idmod, float qty );
@@ -127,6 +128,7 @@ class TrackerMap {
   void setRange(float min,float max);
   std::pair<float,float>getAutomaticRange();
   void addPixel(bool addPixelfl){addPixelFlag=addPixelfl;};
+  void onlyPixel(bool onlyPixelfl){onlyPixelFlag=onlyPixelfl;};
   void reset();
   void load(std::string s="tmap.svg"); 
   int getxsize(){return xsize;};
@@ -504,6 +506,7 @@ void defwindow(int num_lay){
   float oldz;
   bool saveAsSingleLayer;
   bool addPixelFlag;
+  bool onlyPixelFlag;
 };
 #endif
 

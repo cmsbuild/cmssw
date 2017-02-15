@@ -5,7 +5,7 @@
 #include <time.h>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 
@@ -16,6 +16,7 @@
 #include "RecoEcal/EgammaCoreTools/interface/PositionCalc.h"
 #include "RecoEcal/EgammaCoreTools/interface/ClusterShapeAlgo.h"
 #include "Geometry/CaloTopology/interface/CaloSubdetectorTopology.h"
+#include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 
 #include "DataFormats/EgammaReco/interface/BasicClusterFwd.h"
 #include "DataFormats/CaloRecHit/interface/CaloClusterFwd.h"
@@ -23,7 +24,7 @@
 //
 
 
-class IslandClusterProducer : public edm::EDProducer 
+class IslandClusterProducer : public edm::stream::EDProducer<> 
 {
   public:
 
@@ -31,7 +32,7 @@ class IslandClusterProducer : public edm::EDProducer
 
       ~IslandClusterProducer();
 
-      virtual void produce(edm::Event&, const edm::EventSetup&);
+      virtual void produce(edm::Event&, const edm::EventSetup&) override;
 
    private:
 
@@ -40,10 +41,9 @@ class IslandClusterProducer : public edm::EDProducer
 
       IslandClusterAlgo::VerbosityLevel verbosity;
 
-      std::string barrelHitProducer_;
-      std::string endcapHitProducer_;
-      std::string barrelHitCollection_;
-      std::string endcapHitCollection_;
+
+ 	  edm::EDGetTokenT<EcalRecHitCollection> barrelRecHits_;
+	  edm::EDGetTokenT<EcalRecHitCollection> endcapRecHits_;
 
       std::string barrelClusterCollection_;
       std::string endcapClusterCollection_;
@@ -62,13 +62,11 @@ class IslandClusterProducer : public edm::EDProducer
       bool counterExceeded() const { return ((nEvt_ > nMaxPrintout_) || (nMaxPrintout_ < 0)); }
 
       const EcalRecHitCollection * getCollection(edm::Event& evt,
-                                                 const std::string& hitProducer_,
-                                                 const std::string& hitCollection_);
+                                   const edm::EDGetTokenT<EcalRecHitCollection>& token);
 
 
       void clusterizeECALPart(edm::Event &evt, const edm::EventSetup &es,
-                              const std::string& hitProducer,
-                              const std::string& hitCollection,
+							  const edm::EDGetTokenT<EcalRecHitCollection>& token,
                               const std::string& clusterCollection,
 			      const std::string& clusterShapeAssociation,
                               const IslandClusterAlgo::EcalPart& ecalPart);

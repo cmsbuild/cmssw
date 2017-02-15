@@ -6,18 +6,20 @@
 
 class PixelEndcapName;
 class PixelBarrelName;
+class TrackerTopology;
 
 namespace sipixelobjects {
 
 class FrameConversion {
 public:
+  FrameConversion(){}
   FrameConversion( const PixelEndcapName & name, int rocIdInDetUnit);
   FrameConversion( const PixelBarrelName & name, int rocIdInDetUnit);
   FrameConversion( int rowOffset, int rowSlopeSign, int colOffset, int colSlopeSign)
     : theRowConversion( LinearConversion(rowOffset,rowSlopeSign) ),
     theCollumnConversion( LinearConversion(colOffset, colSlopeSign) ) {}
-
-  FrameConversion * clone() const { return new FrameConversion(*this); }
+  // for phase1
+  FrameConversion(bool bpix, int side, int rocIdInDetUnit);
 
   const sipixelobjects::LinearConversion & row() const { return theRowConversion; }
   const sipixelobjects::LinearConversion & collumn() const { return theCollumnConversion;}

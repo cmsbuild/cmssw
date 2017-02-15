@@ -4,11 +4,10 @@
 //
 // Original Author:  Fedor Ratnikov
 //         Created:  Dec. 28, 2006 (originally JetCorrectionService, renamed in 2011)
-// $Id: JetCorrectionESProducer.h,v 1.1.2.1 2011/10/17 20:54:17 wdd Exp $
 //
 
 #include <string>
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 #include "FWCore/Framework/interface/ModuleFactory.h"
 #include "FWCore/Framework/interface/ESProducer.h"
@@ -43,13 +42,12 @@ public:
 
   ~JetCorrectionESProducer() {}
 
-  boost::shared_ptr<JetCorrector> produce(JetCorrectionsRecord const& iRecord) 
+  std::shared_ptr<JetCorrector> produce(JetCorrectionsRecord const& iRecord)
   {
     edm::ESHandle<JetCorrectorParametersCollection> JetCorParColl;
     iRecord.get(mAlgo,JetCorParColl); 
     JetCorrectorParameters const& JetCorPar = (*JetCorParColl)[mLevel];
-    boost::shared_ptr<JetCorrector> mCorrector(new Corrector(JetCorPar, mParameterSet));
-    return mCorrector;
+    return std::make_shared<Corrector>(JetCorPar, mParameterSet);
   }
 };
 #endif

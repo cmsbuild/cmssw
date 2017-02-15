@@ -7,31 +7,16 @@ PixelTripletHLTGenerator = cms.PSet(
     useFixedPreFiltering = cms.bool(False),
     ComponentName = cms.string('PixelTripletHLTGenerator'),
     extraHitRPhitolerance = cms.double(0.032),
-    useMultScattering = cms.bool(True),
-    phiPreFiltering = cms.double(0.3), ## can be removed if !useFixedPreFiltering
-    
-    #double extraHitRZtolerance   = 0.207     # ok for strips
-    #double extraHitRPhitolerance = 0.102     # ok for strips
     extraHitRZtolerance = cms.double(0.037),
+    useMultScattering = cms.bool(True),
+    phiPreFiltering = cms.double(0.3),
     SeedComparitorPSet = cms.PSet(
      ComponentName = cms.string('none')
      )
 )
 
-PixelTripletHLTGeneratorWithFilter = cms.PSet(
-   maxElement = cms.uint32(100000),
-    useBending = cms.bool(True),
-    useFixedPreFiltering = cms.bool(False),
-    ComponentName = cms.string('PixelTripletHLTGenerator'),
-    extraHitRPhitolerance = cms.double(0.032),
-    useMultScattering = cms.bool(True),
-    phiPreFiltering = cms.double(0.3), ## can be removed if !useFixedPreFiltering
-    
-    #double extraHitRZtolerance   = 0.207     # ok for strips
-    #double extraHitRPhitolerance = 0.102     # ok for strips
-    extraHitRZtolerance = cms.double(0.037),
-    SeedComparitorPSet = cms.PSet(
-     ComponentName = cms.string('LowPtClusterShapeSeedComparitor')
-     )
-)
+import RecoPixelVertexing.PixelLowPtUtilities.LowPtClusterShapeSeedComparitor_cfi
+PixelTripletHLTGeneratorWithFilter = PixelTripletHLTGenerator.clone()
+PixelTripletHLTGeneratorWithFilter.SeedComparitorPSet = RecoPixelVertexing.PixelLowPtUtilities.LowPtClusterShapeSeedComparitor_cfi.LowPtClusterShapeSeedComparitor.clone()
+
 

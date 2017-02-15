@@ -5,12 +5,15 @@
 #include "RecoTracker/TkSeedGenerator/interface/FastHelix.h"
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/Utilities/interface/ESInputTag.h"
+#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
 #include "TrackingTools/Records/interface/TrackingComponentsRecord.h" 
 #include "TrackingTools/Records/interface/TransientRecHitRecord.h" 
 #include "TrackingTools/TrajectoryState/interface/TrajectoryStateTransform.h"
 #include "TrackingTools/TrajectoryState/interface/TrajectoryStateOnSurface.h"
 #include "RecoTracker/TkSeedingLayers/interface/SeedComparitor.h"
+#include "RecoTracker/TkTrackingRegions/interface/RectangularEtaPhiTrackingRegion.h"
 
 namespace {
 
@@ -22,6 +25,16 @@ namespace {
 
 SeedFromConsecutiveHitsCreator::~SeedFromConsecutiveHitsCreator(){}
 
+void SeedFromConsecutiveHitsCreator::fillDescriptions(edm::ParameterSetDescription& desc) {
+  desc.add<std::string>("propagator", "PropagatorWithMaterialParabolicMf");
+  desc.add<double>("SeedMomentumForBOFF", 5.0);
+  desc.add<double>("OriginTransverseErrorMultiplier", 1.0);
+  desc.add<double>("MinOneOverPtError", 1.0);
+  desc.add<std::string>("TTRHBuilder", "WithTrackAngle");
+  desc.add<std::string>("magneticField", "ParabolicMf");
+  desc.add<bool>("forceKinematicWithRegionDirection", false);
+}
+
 void SeedFromConsecutiveHitsCreator::init(const TrackingRegion & iregion,
 	  const edm::EventSetup& es,
 	  const SeedComparitor *ifilter) {
@@ -32,9 +45,17 @@ void SeedFromConsecutiveHitsCreator::init(const TrackingRegion & iregion,
   // get propagator
   es.get<TrackingComponentsRecord>().get(thePropagatorLabel, propagatorHandle);
   // mag field
-  es.get<IdealMagneticFieldRecord>().get(bfield);
+  es.get<IdealMagneticFieldRecord>().get(mfName_, bfield);  
+  //  edm::ESInputTag mfESInputTag(mfName_);
+  //  es.get<IdealMagneticFieldRecord>().get(mfESInputTag, bfield);  
   nomField = bfield->nominalValue();
-  isBOFF = (0==nomField);  
+  isBOFF = (0==nomField);
+
+  edm::ESHandle<TransientTrackingRecHitBuilder> builderH;
+  es.get<TransientRecHitRecord>().get(TTRHBuilder, builderH);
+  auto builder = (TkTransientTrackingRecHitBuilder const *)(builderH.product());
+  cloner = (*builder).cloner();
+
 }
 
 void SeedFromConsecutiveHitsCreator::makeSeed(TrajectorySeedCollection & seedCollection,
@@ -48,6 +69,38 @@ void SeedFromConsecutiveHitsCreator::makeSeed(TrajectorySeedCollection & seedCol
 
   CurvilinearTrajectoryError error = initialError(sin2Theta);
   FreeTrajectoryState fts(kine, error);
+  if(region->direction().x()!=0 && forceKinematicWithRegionDirection_) // a direction was given, check if it is an etaPhi region
+  {
+     const RectangularEtaPhiTrackingRegion * etaPhiRegion =  dynamic_cast<const RectangularEtaPhiTrackingRegion *>(region);
+     if(etaPhiRegion) {  
+
+	//the following completely reset the kinematics, perhaps it makes no sense and newKine=kine would do better 
+   	GlobalVector direction=region->direction()/region->direction().mag();
+   	GlobalVector momentum=direction*fts.momentum().mag();
+   	GlobalPoint position=region->origin()+5*direction;  
+   	GlobalTrajectoryParameters newKine(position,momentum,fts.charge(),&fts.parameters().magneticField());
+
+  	GlobalError vertexErr( sqr(region->originRBound()), 0, sqr(region->originRBound()),
+                   0, 0, sqr(region->originZBound()));
+
+  	float ptMin = region->ptMin();
+  	AlgebraicSymMatrix55 C = ROOT::Math::SMatrixIdentity();
+
+  	float minC00 = 0.4;
+  	C[0][0] = std::max(sin2Theta/sqr(ptMin), minC00);
+  	float zErr = vertexErr.czz();
+  	float transverseErr = vertexErr.cxx(); // assume equal cxx cyy
+        float deltaEta = (etaPhiRegion->etaRange().first-etaPhiRegion->etaRange().second)/2.;
+        float deltaPhi = (etaPhiRegion->phiMargin().right()+etaPhiRegion->phiMargin().left())/2.;
+	C[1][1] = deltaEta*deltaEta*4; //2 sigma of what given in input
+  	C[2][2] = deltaPhi*deltaPhi*4;
+  	C[3][3] = transverseErr;
+  	C[4][4] = zErr*sin2Theta + transverseErr*(1-sin2Theta);
+   	CurvilinearTrajectoryError newError(C);
+  	fts =  FreeTrajectoryState(newKine,newError);
+    }
+  }
+
 
   buildSeed(seedCollection,hits,fts); 
 }
@@ -57,8 +110,8 @@ void SeedFromConsecutiveHitsCreator::makeSeed(TrajectorySeedCollection & seedCol
 bool SeedFromConsecutiveHitsCreator::initialKinematic(GlobalTrajectoryParameters & kine,
 						      const SeedingHitSet & hits) const{
 
-  TransientTrackingRecHit::ConstRecHitPointer tth1 = hits[0];
-  TransientTrackingRecHit::ConstRecHitPointer tth2 = hits[1];
+  SeedingHitSet::ConstRecHitPointer tth1 = hits[0];
+  SeedingHitSet::ConstRecHitPointer tth2 = hits[1];
   
   const GlobalPoint& vertexPos = region->origin();
 
@@ -77,7 +130,7 @@ bool SeedFromConsecutiveHitsCreator::initialKinematic(GlobalTrajectoryParameters
 					kine.charge(),
 					&*bfield);
   }
-  return (filter ? filter->compatible(hits, kine, helix, *region) : true); 
+  return (filter ? filter->compatible(hits, kine, helix) : true); 
 }
 
 
@@ -127,39 +180,39 @@ void SeedFromConsecutiveHitsCreator::buildSeed(
       : propagator->propagate(updatedState, tracker->idToDet(hit->geographicalId())->surface());
     if (!state.isValid()) return;
     
-    TransientTrackingRecHit::ConstRecHitPointer const &  tth = hits[iHit]; 
+    SeedingHitSet::ConstRecHitPointer   tth = hits[iHit]; 
     
-    TransientTrackingRecHit::RecHitPointer const & newtth = refitHit( tth, state);
+    std::unique_ptr<BaseTrackerRecHit> newtth(refitHit( tth, state));
     
-    if (!checkHit(state,newtth)) return;
+    if (!checkHit(state,&*newtth)) return;
 
     updatedState =  updator.update(state, *newtth);
     if (!updatedState.isValid()) return;
     
-    seedHits.push_back(newtth->hit()->clone());
+    seedHits.push_back(newtth.release());
 
   } 
 
+  if(!hit) return;
   
   PTrajectoryStateOnDet const & PTraj = 
     trajectoryStateTransform::persistentState(updatedState, hit->geographicalId().rawId());
-  TrajectorySeed seed(PTraj,std::move(seedHits),alongMomentum); 
-  if ( !filter || filter->compatible(seed)) seedCollection.push_back(seed);
+  seedCollection.emplace_back(PTraj,std::move(seedHits),alongMomentum);
 
 }
 
-TransientTrackingRecHit::RecHitPointer SeedFromConsecutiveHitsCreator::refitHit(
-      const TransientTrackingRecHit::ConstRecHitPointer &hit, 
-      const TrajectoryStateOnSurface &state) const
+SeedingHitSet::RecHitPointer 
+SeedFromConsecutiveHitsCreator::refitHit(SeedingHitSet::ConstRecHitPointer hit, 
+					 const TrajectoryStateOnSurface &state) const
 {
-  return hit->clone(state);
+  return (SeedingHitSet::RecHitPointer)(cloner(*hit,state));
 }
 
 bool 
 SeedFromConsecutiveHitsCreator::checkHit(
       const TrajectoryStateOnSurface &tsos,
-      const TransientTrackingRecHit::ConstRecHitPointer &hit) const 
+      SeedingHitSet::ConstRecHitPointer hit) const 
 { 
-    return (filter ? filter->compatible(tsos,hit) : true); 
+    return (filter ? filter->compatible(tsos,hit) : true);
 }
 

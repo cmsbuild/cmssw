@@ -1,31 +1,28 @@
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <xercesc/dom/DOMNode.hpp>
-#include <xercesc/dom/DOM.hpp>
-#include <xercesc/parsers/XercesDOMParser.hpp>
-#include <xercesc/util/PlatformUtils.hpp>
-#include <xercesc/util/XMLString.hpp>
-#include <xercesc/sax/SAXException.hpp>
-#include <xercesc/framework/LocalFileFormatTarget.hpp>
-
-
 #include "CondFormats/EcalObjects/interface/EcalADCToGeVConstant.h"
 #include "CondTools/Ecal/interface/EcalADCToGeVXMLTranslator.h"
 #include "CondTools/Ecal/interface/DOMHelperFunctions.h"
+#include "FWCore/Concurrency/interface/Xerces.h"
+#include "Utilities/Xerces/interface/XercesStrUtils.h"
+#include <xercesc/dom/DOMNode.hpp>
+#include <xercesc/dom/DOM.hpp>
+#include <xercesc/parsers/XercesDOMParser.hpp>
+#include <xercesc/util/XMLString.hpp>
+#include <xercesc/sax/SAXException.hpp>
+#include <xercesc/framework/LocalFileFormatTarget.hpp>
+#include <iostream>
+#include <sstream>
+#include <fstream>
 
 using namespace XERCES_CPP_NAMESPACE;
 using namespace xuti;
 using namespace std;
 
- 
 
 int  EcalADCToGeVXMLTranslator::readXML(const std::string& filename, 
 					EcalCondHeader& header,
-					EcalADCToGeVConstant& record){
-
+					EcalADCToGeVConstant& record) {
  
-  XMLPlatformUtils::Initialize();
+  cms::concurrency::xercesInitialize();
 
   XercesDOMParser* parser = new XercesDOMParser;
   parser->setValidationScheme( XercesDOMParser::Val_Never );
@@ -60,43 +57,38 @@ int  EcalADCToGeVXMLTranslator::readXML(const std::string& filename,
 
 
   delete parser;
-  XMLPlatformUtils::Terminate();
+  cms::concurrency::xercesTerminate();
   return 0;
 
 }
 
-
-
-
-
 int EcalADCToGeVXMLTranslator::writeXML(const std::string& filename, 
 					const EcalCondHeader& header,
-					const EcalADCToGeVConstant& record){
+					const EcalADCToGeVConstant& record) {
+
+  cms::concurrency::xercesInitialize();
+
   std::fstream fs(filename.c_str(),ios::out);
   fs<< dumpXML(header,record);
-  return 0;  
- 
+  
+  cms::concurrency::xercesTerminate();
+
+  return 0;
 }
 
-std::string EcalADCToGeVXMLTranslator::dumpXML(const EcalCondHeader& header,
-					  const EcalADCToGeVConstant& record){
+std::string
+EcalADCToGeVXMLTranslator::dumpXML(const EcalCondHeader& header,
+				   const EcalADCToGeVConstant& record) {
 
-  XMLPlatformUtils::Initialize();
+  unique_ptr<DOMImplementation> impl( DOMImplementationRegistry::getDOMImplementation( cms::xerces::uStr("LS").ptr()));
   
-  DOMImplementation*  impl =
-    DOMImplementationRegistry::getDOMImplementation(fromNative("LS").c_str());
+  DOMLSSerializer* writer = impl->createLSSerializer();
+  if( writer->getDomConfig()->canSetParameter( XMLUni::fgDOMWRTFormatPrettyPrint, true ))
+    writer->getDomConfig()->setParameter( XMLUni::fgDOMWRTFormatPrettyPrint, true );
   
-  DOMWriter* writer =static_cast<DOMImplementationLS*>(impl)->createDOMWriter( );
-  writer->setFeature(XMLUni::fgDOMWRTFormatPrettyPrint, true);
-  
-  DOMDocumentType* doctype = impl->createDocumentType(fromNative("XML").c_str(), 0, 0 );
-  DOMDocument *    doc = 
-    impl->createDocument( 0, fromNative(ADCToGeVConstant_tag).c_str(), doctype );
-
-
-  doc->setEncoding(fromNative("UTF-8").c_str() );
-  doc->setStandalone(true);
-  doc->setVersion(fromNative("1.0").c_str() );
+  DOMDocumentType* doctype = impl->createDocumentType( cms::xerces::uStr("XML").ptr(), 0, 0 );
+  DOMDocument* doc = 
+    impl->createDocument( 0, cms::xerces::uStr(ADCToGeVConstant_tag.c_str()).ptr(), doctype );
     
   DOMElement* root = doc->getDocumentElement();
  
@@ -105,10 +97,10 @@ std::string EcalADCToGeVXMLTranslator::dumpXML(const EcalCondHeader& header,
   xuti::WriteNodeWithValue(root,Barrel_tag,record.getEBValue());
   xuti::WriteNodeWithValue(root,Endcap_tag,record.getEEValue());
 
-  std::string dump= toNative(writer->writeToString(*root)); 
+  std::string dump = cms::xerces::toString(writer->writeToString( root )); 
   doc->release();
-
-  //   XMLPlatformUtils::Terminate();
+  doctype->release();
+  writer->release();
 
   return dump;
 }

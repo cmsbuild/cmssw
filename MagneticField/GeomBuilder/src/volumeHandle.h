@@ -7,8 +7,6 @@
  * One instance is created for each DDVolume. The parameters of the 
  * boundary surfaces are calculated during construction.
  *
- *  $Date: 2009/05/13 15:55:54 $
- *  $Revision: 1.9 $
  *  \author N. Amapane - INFN Torino
  */
 
@@ -65,7 +63,7 @@ public:
 
   /// Just for debugging...
   static void printUniqueNames(handles::const_iterator begin,
-			       handles::const_iterator end);
+			       handles::const_iterator end, bool uniq=true);
 
 
   // Phi ranges: Used by: LessDPhiMax; bSector; bSlab::[min|max]Phi();

@@ -16,7 +16,7 @@
    
 */
 
-class TruncatedPyramid  GCC11_FINAL : public CaloCellGeometry {
+class TruncatedPyramid  final : public CaloCellGeometry {
 public:
 
   typedef CaloCellGeometry::CCGFloat CCGFloat ;
@@ -30,7 +30,7 @@ public:
   
   TruncatedPyramid& operator=( const TruncatedPyramid& tr ) ;
   
-  TruncatedPyramid( const CornersMgr*  cMgr ,
+  TruncatedPyramid(       CornersMgr*  cMgr ,
 		    const GlobalPoint& fCtr ,
 		    const GlobalPoint& bCtr ,
 		    const GlobalPoint& cor1 ,
@@ -42,8 +42,6 @@ public:
   virtual ~TruncatedPyramid() ;
   
   const GlobalPoint getPosition( CCGFloat depth ) const ;
-  
-  virtual const CornersVec& getCorners() const ;
   
   // Return thetaAxis polar angle of axis of the crystal
   CCGFloat getThetaAxis() const ;
@@ -60,7 +58,7 @@ public:
   
   virtual void vocalCorners( Pt3DVec&        vec ,
 			     const CCGFloat* pv  ,
-			     Pt3D&           ref  ) const ;
+			     Pt3D&           ref  ) const override;
   
   static void localCorners( Pt3DVec&        vec ,
 			    const CCGFloat* pv  ,
@@ -74,9 +72,11 @@ public:
 				const CCGFloat* pv  ,
 				Pt3D&           ref  ) ;
   
-  virtual void getTransform( Tr3D& tr, Pt3DVec* lptr ) const ;
+  virtual void getTransform( Tr3D& tr, Pt3DVec* lptr ) const override;
   
 private:
+  virtual void initCorners(CornersVec&) override;
+  
   GlobalVector makeAxis( void );
   
   const GlobalPoint backCtr( void ) const;    

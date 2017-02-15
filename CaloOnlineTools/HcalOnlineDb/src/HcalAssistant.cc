@@ -18,10 +18,14 @@
 #include "CaloOnlineTools/HcalOnlineDb/interface/HcalAssistant.h"
 #include "CaloOnlineTools/HcalOnlineDb/interface/ConnectionManager.h"
 #include "CaloOnlineTools/HcalOnlineDb/interface/ConfigurationDatabaseException.hh"
-#include "xgi/Utils.h"
-#include "toolbox/string.h"
 #include "OnlineDB/Oracle/interface/Oracle.h"
 #include "DataFormats/HcalDetId/interface/HcalDetId.h"
+
+#ifdef HAVE_XDAQ
+#include <toolbox/string.h>
+#else
+#include "CaloOnlineTools/HcalOnlineDb/interface/xdaq_compat.h"  // Includes typedef for log4cplus::Logger
+#endif
 
 using namespace std;
 using namespace oracle::occi;
@@ -164,6 +168,7 @@ std::string HcalAssistant::getZDCSectionString(HcalZDCDetId::Section _section){
   if           ( _section==HcalZDCDetId::EM)   zdcSection = "ZDC EM";
   else if      ( _section==HcalZDCDetId::HAD)  zdcSection = "ZDC HAD";
   else if      ( _section==HcalZDCDetId::LUM)  zdcSection = "ZDC LUM";
+  else if      ( _section==HcalZDCDetId::RPD)  zdcSection = "ZDC RPD";
   else zdcSection = "UNKNOWN";
   return zdcSection;
 }
@@ -173,6 +178,7 @@ HcalZDCDetId::Section HcalAssistant::getZDCSection(std::string _section){
   if      ( _section.find("ZDC EM") != std::string::npos ) return HcalZDCDetId::EM;
   else if ( _section.find("ZDC HAD") != std::string::npos ) return HcalZDCDetId::HAD;
   else if ( _section.find("ZDC LUM") != std::string::npos ) return HcalZDCDetId::LUM;
+  else if ( _section.find("ZDC RPD") != std::string::npos ) return HcalZDCDetId::RPD;
   else return HcalZDCDetId::Unknown;
 }
 

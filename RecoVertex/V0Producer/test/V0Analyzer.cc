@@ -49,10 +49,6 @@
 #include "DataFormats/RecoCandidate/interface/RecoChargedCandidate.h"
 #include "DataFormats/Candidate/interface/VertexCompositeCandidate.h"
 
-//#include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
-//#include "Geometry/CommonDetUnit/interface/GeomDet.h"
-//#include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
-
 #include "SimDataFormats/Track/interface/SimTrack.h"
 #include "SimDataFormats/Track/interface/SimTrackContainer.h"
 #include "SimDataFormats/Vertex/interface/SimVertex.h"
@@ -63,7 +59,7 @@
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 #include "Geometry/CommonDetUnit/interface/GeomDet.h"
-#include "Geometry/TrackerGeometryBuilder/interface/GluedGeomDet.h"
+#include "Geometry/CommonDetUnit/interface/GluedGeomDet.h"
 
 #include "DataFormats/TrackingRecHit/interface/TrackingRecHit.h"
 
@@ -129,7 +125,7 @@ class V0Analyzer : public edm::EDAnalyzer {
   TH1D* rVtxHisto1;
   TH1D* vtxSigHisto1;
   TH1D* rVtxHisto2;
-  TH1D* simRHisto;
+  //  TH1D* simRHisto;
   TH1D* vtxSigHisto2;
 
   TH1D* rErrorHisto;

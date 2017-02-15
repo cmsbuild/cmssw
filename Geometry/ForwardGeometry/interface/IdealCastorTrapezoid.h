@@ -45,13 +45,11 @@ class IdealCastorTrapezoid: public CaloCellGeometry
       IdealCastorTrapezoid& operator=( const IdealCastorTrapezoid& idct ) ;
       
       IdealCastorTrapezoid( const GlobalPoint& faceCenter,
-			    const CornersMgr*  mgr       ,
+			    CornersMgr*          mgr     ,
 			    const CCGFloat*      parm        ) ;
 	 
       virtual ~IdealCastorTrapezoid() ;
 	 
-      virtual const CornersVec& getCorners() const;
-
       CCGFloat dxl() const ; 
       CCGFloat dxh() const ; 
       CCGFloat dx()  const ; 
@@ -64,14 +62,18 @@ class IdealCastorTrapezoid: public CaloCellGeometry
       CCGFloat an()  const ;
       CCGFloat dR()  const ;
 
+      using CaloCellGeometry::vocalCorners;
       virtual void vocalCorners( Pt3DVec&        vec ,
 				 const CCGFloat* pv  ,
-				 Pt3D&           ref  ) const ;
+				 Pt3D&           ref  ) const override ;
 
       static void localCorners( Pt3DVec&        vec ,
 				const CCGFloat* pv  , 
 				Pt3D&           ref   ) ;
    private:
+      virtual void initCorners(CornersVec& ) override;
+
+
 };
 
 std::ostream& operator<<( std::ostream& s , const IdealCastorTrapezoid& cell ) ;

@@ -17,7 +17,6 @@
 //
 // Original Author:  Christian Veelken, UC Davis
 //         Created:  Thu Nov  2 13:47:40 CST 2006
-// $Id: ConeAreaRootFunction.cc,v 1.3 2006/11/30 17:07:28 dwjang Exp $
 //
 //
 
@@ -38,12 +37,12 @@ class ConeAreaRootFunction : public ConeAreaFunction
 
   void SetParameterConeArea(double coneArea);
 
-  ROOT::Math::IGenFunction* Clone () const { return new ConeAreaRootFunction(*this); }
+  ROOT::Math::IGenFunction* Clone () const override { return new ConeAreaRootFunction(*this); }
 
  private:
-  void SetParameters(double* param);
+  void SetParameters(const double* param) override;
 
-  double DoEval(double x) const;
+  double DoEval(double x) const override;
 
   double coneArea_; // area covered by cone
 

@@ -2,7 +2,7 @@
 //
 // Package:    PatShapeAna
 // Class:      PatShapeAna
-// 
+//
 /**\class PatShapeAna PatShapeAna.h PhysicsTools/PatShapeAna/interface/PatShapeAna.h
 
  Description: <one line class summary>
@@ -13,7 +13,6 @@
 //
 // Original Author:  Christian AUTERMANN
 //         Created:  Sat Mar 22 12:58:04 CET 2008
-// $Id: PATHemisphereProducer.h,v 1.7 2010/01/11 13:36:48 hegner Exp $
 //
 //
 
@@ -33,57 +32,44 @@
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "PhysicsTools/UtilAlgos/interface/ParameterAdapter.h"
 
-#include "PhysicsTools/PatAlgos/interface/HemisphereAlgo.h" 
+#include "PhysicsTools/PatAlgos/interface/HemisphereAlgo.h"
 //
 // class decleration
 //
 
-class PATHemisphereProducer : public edm::EDProducer {
-   public:
-      explicit PATHemisphereProducer(const edm::ParameterSet&);
-      ~PATHemisphereProducer();
-
-   private:
-      virtual void produce(edm::Event&, const edm::EventSetup&) override;
-      virtual void endJob() ;
-      
-      // ----------member data ---------------------------
-      /// Input: All PAT objects that are to cross-clean  or needed for that
-      edm::InputTag _patJets;
-      edm::InputTag _patMets;
-      edm::InputTag _patMuons;
-      edm::InputTag _patElectrons;
-      edm::InputTag _patPhotons;
-      edm::InputTag _patTaus;
-
-  float _minJetEt;
-  float _minMuonEt;       
-  float _minElectronEt;       
-  float _minTauEt;       
-  float _minPhotonEt;      
-
-  float _maxJetEta;      
-  float _maxMuonEta;       
-  float _maxElectronEta;     
-  float _maxTauEta;       
-  float _maxPhotonEta;      
-
-      int _seedMethod; 
-      int _combinationMethod;
-
-      HemisphereAlgo* myHemi;
-      
-      std::vector<float> vPx, vPy, vPz, vE; 
-      std::vector<float> vA1, vA2;
-      std::vector<int> vgroups;
-  std::vector<reco::CandidatePtr> componentPtrs_;
-
+class PATHemisphereProducer : public edm::global::EDProducer<> {
+public:
+  explicit PATHemisphereProducer(const edm::ParameterSet&);
+  ~PATHemisphereProducer();
+  
+  virtual void produce(edm::StreamID, edm::Event&, const edm::EventSetup&) const override;
+  
+private:  
+  // ----------member data ---------------------------
+  /// Input: All PAT objects that are to cross-clean  or needed for that
+  const edm::EDGetTokenT<reco::CandidateView> _patJetsToken;
+  //       edm::EDGetTokenT<reco::CandidateView> _patMetsToken;
+  const edm::EDGetTokenT<reco::CandidateView> _patMuonsToken;
+  const edm::EDGetTokenT<reco::CandidateView> _patElectronsToken;
+  const edm::EDGetTokenT<reco::CandidateView> _patPhotonsToken;
+  const edm::EDGetTokenT<reco::CandidateView> _patTausToken;
+  
+  const float _minJetEt;
+  const float _minMuonEt;
+  const float _minElectronEt;
+  const float _minTauEt;
+  const float _minPhotonEt;
+  
+  const float _maxJetEta;
+  const float _maxMuonEta;
+  const float _maxElectronEta;
+  const float _maxTauEta;
+  const float _maxPhotonEta;
+  
+  const int _seedMethod;
+  const int _combinationMethod;
   
   typedef std::vector<float> HemiAxis;
- 
-      
-   
-    
 };
 
 #endif

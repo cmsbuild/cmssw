@@ -1,30 +1,18 @@
-/***************************************************************************
-                          DDLBooleanSolid.cc  -  description
-                             -------------------
-    begin                : Wed Dec 12, 2001
-    email                : case@ucdhep.ucdavis.edu
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *           DDDParser sub-component of DDD                                *
- *                                                                         *
- ***************************************************************************/
-
 #include "DetectorDescription/Parser/src/DDLBooleanSolid.h"
-#include "DetectorDescription/Parser/src/DDXMLElement.h"
-
-#include "DetectorDescription/Core/interface/DDSolid.h"
+#include "DetectorDescription/Base/interface/DDTranslation.h"
 #include "DetectorDescription/Core/interface/DDName.h"
-#include "DetectorDescription/Base/interface/DDdebug.h"
+#include "DetectorDescription/Core/interface/DDSolid.h"
+#include "DetectorDescription/Core/interface/DDTransform.h"
+#include "DetectorDescription/ExprAlgo/interface/ClhepEvaluator.h"
+#include "DetectorDescription/Parser/interface/DDLElementRegistry.h"
+#include "DetectorDescription/Parser/src/DDLSolid.h"
+#include "DetectorDescription/Parser/src/DDXMLElement.h"
+#include "FWCore/Utilities/interface/Exception.h"
 
-#include "DetectorDescription/ExprAlgo/interface/ExprEvalSingleton.h"
+class DDCompactView;
 
 DDLBooleanSolid::DDLBooleanSolid( DDLElementRegistry* myreg )
   : DDLSolid( myreg )
-{}
-
-DDLBooleanSolid::~DDLBooleanSolid( void )
 {}
 
 // Clear out rSolids.
@@ -40,8 +28,6 @@ DDLBooleanSolid::preProcessElement( const std::string& name, const std::string& 
 void
 DDLBooleanSolid::processElement( const std::string& name, const std::string& nmspace, DDCompactView& cpv )
 {
-  DCOUT_V( 'P', "DDLBooleanSolid::processElement started" );
-
   // new DDLBoolean will handle:
   // <UnionSolid name="bs" firstSolid="blah" secondSolid="argh"> <Translation...> <rRotation .../> </UnionSolid
   // AND <UnionSolid> <rSolid...> <rSolid...> <Translation...> <rRotation...> </UnionSolid>
@@ -50,7 +36,7 @@ DDLBooleanSolid::processElement( const std::string& name, const std::string& nms
   DDXMLElement* myTranslation = myRegistry_->getElement( "Translation" ); // get Translation child
   DDXMLElement* myrRotation  = myRegistry_->getElement( "rRotation" ); // get rRotation child
 
-  ExprEvalInterface & ev = ExprEvalSingleton::instance();
+  ClhepEvaluator & ev = myRegistry_->evaluator();
   DDXMLAttribute atts = getAttributeSet();
 
   DDName ddn1, ddn2;
@@ -127,15 +113,11 @@ DDLBooleanSolid::processElement( const std::string& name, const std::string& nms
   
   DDLSolid::setReference(nmspace, cpv);
 
-  DCOUT_V('p', theSolid);
-
   // clear all "children" and attributes
   myTranslation->clear();
   myrRotation->clear();
   myrSolid->clear();
   clear();
-  DCOUT_V('P', "DDLBooleanSolid::processElement completed");
-
 }
 
 // This only happens on error, so I don't care how "slow" it is :-)

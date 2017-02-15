@@ -5,9 +5,9 @@
 AlCaEcalHcalReadoutsProducer::AlCaEcalHcalReadoutsProducer(const edm::ParameterSet& iConfig)
 {
 
-   hoLabel_ = iConfig.getParameter<edm::InputTag>("hoInput");
-   hfLabel_ = iConfig.getParameter<edm::InputTag>("hfInput");
-   hbheLabel_ = iConfig.getParameter<edm::InputTag>("hbheInput");
+   tok_ho_ = consumes<HORecHitCollection>(iConfig.getParameter<edm::InputTag>("hoInput"));
+   tok_hf_ = consumes<HFRecHitCollection>(iConfig.getParameter<edm::InputTag>("hfInput"));
+   tok_hbhe_ = consumes<HBHERecHitCollection>(iConfig.getParameter<edm::InputTag>("hbheInput"));
    
    //register your products
    produces<HBHERecHitCollection>("HBHERecHitCollection");
@@ -34,26 +34,26 @@ AlCaEcalHcalReadoutsProducer::produce(edm::Event& iEvent, const edm::EventSetup&
    edm::Handle<HORecHitCollection> ho;
    edm::Handle<HFRecHitCollection> hf;
 
-   iEvent.getByLabel(hbheLabel_,hbhe);
+   iEvent.getByToken(tok_hbhe_,hbhe);
    if(!hbhe.isValid()){
      LogDebug("") << "AlCaEcalHcalReadoutProducer: Error! can't get hbhe product!" << std::endl;
      return ;
    }
 
-   iEvent.getByLabel(hoLabel_,ho);
+   iEvent.getByToken(tok_ho_,ho);
     if(!ho.isValid()) {
       LogDebug("") << "AlCaEcalHcalReadoutProducer: Error! can't get ho product!" << std::endl;
     }
     
-    iEvent.getByLabel(hfLabel_,hf);
+    iEvent.getByToken(tok_hf_,hf);
     if(!hf.isValid()) {
       LogDebug("") << "AlCaEcalHcalReadoutProducer: Error! can't get hf product!" << std::endl;
     }
     //Create empty output collections
    
-  std::auto_ptr<HBHERecHitCollection> miniHBHERecHitCollection(new HBHERecHitCollection);
-  std::auto_ptr<HORecHitCollection> miniHORecHitCollection(new HORecHitCollection);
-  std::auto_ptr<HFRecHitCollection> miniHFRecHitCollection(new HFRecHitCollection);
+  auto miniHBHERecHitCollection = std::make_unique<HBHERecHitCollection>();
+  auto miniHORecHitCollection = std::make_unique<HORecHitCollection>();
+  auto miniHFRecHitCollection = std::make_unique<HFRecHitCollection>();
 
   const HBHERecHitCollection Hithbhe = *(hbhe.product());
   for(HBHERecHitCollection::const_iterator hbheItr=Hithbhe.begin(); hbheItr!=Hithbhe.end(); hbheItr++)
@@ -75,9 +75,9 @@ AlCaEcalHcalReadoutsProducer::produce(edm::Event& iEvent, const edm::EventSetup&
 
 
   //Put selected information in the event
-  iEvent.put( miniHBHERecHitCollection, "HBHERecHitCollection");
-  iEvent.put( miniHORecHitCollection, "HORecHitCollection");
-  iEvent.put( miniHFRecHitCollection, "HFRecHitCollection");
+  iEvent.put(std::move(miniHBHERecHitCollection), "HBHERecHitCollection");
+  iEvent.put(std::move(miniHORecHitCollection), "HORecHitCollection");
+  iEvent.put(std::move(miniHFRecHitCollection), "HFRecHitCollection");
   
   
 }

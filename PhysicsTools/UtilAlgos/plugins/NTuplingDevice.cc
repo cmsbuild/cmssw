@@ -13,7 +13,6 @@
 //
 // Original Author:  Jean-Roch Vlimant
 //         Created:  Sun May 11 21:12:46 CEST 2008
-// $Id: NTuplingDevice.cc,v 1.3 2009/05/11 14:29:49 llista Exp $
 //
 //
 
@@ -83,8 +82,7 @@ void
 NTuplingDevice::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
   ntupler_->fill(iEvent);
-  std::auto_ptr<double> v(new double(0));
-  iEvent.put(v,"dummy");
+  iEvent.put(std::make_unique<double>(0.),"dummy");
 }
 
 // ------------ method called once each job just before starting event loop  ------------

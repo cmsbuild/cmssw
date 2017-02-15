@@ -1,6 +1,4 @@
-using namespace std;
 
-#include "DataFormats/FEDRawData/interface/FEDRawDataCollection.h"
 #include "TBDataFormats/HcalTBObjects/interface/HcalTBTriggerData.h"
 #include "TBDataFormats/HcalTBObjects/interface/HcalTBRunData.h"
 #include "TBDataFormats/HcalTBObjects/interface/HcalTBEventPosition.h"
@@ -11,6 +9,7 @@ using namespace std;
 #include "DataFormats/Common/interface/Handle.h"
 #include <iostream>
 #include <fstream>
+using namespace std;
 
 
   HcalTBObjectUnpacker::HcalTBObjectUnpacker(edm::ParameterSet const& conf):
@@ -21,9 +20,10 @@ using namespace std;
     qadcFed_(conf.getUntrackedParameter<int>("HcalQADCFED",-1)),
     calibFile_(conf.getUntrackedParameter<string>("ConfigurationFile","")),
     tdcUnpacker_(conf.getUntrackedParameter<bool>("IncludeUnmatchedHits",false)),
-    doRunData_(false),doTriggerData_(false),doEventPosition_(false),doTiming_(false),doSourcePos_(false),doBeamADC_(false),
-    fedRawDataCollectionTag_(conf.getParameter<edm::InputTag>("fedRawDataCollectionTag")) 
+    doRunData_(false),doTriggerData_(false),doEventPosition_(false),doTiming_(false),doSourcePos_(false),doBeamADC_(false)
   {
+
+    tok_raw_ = consumes<FEDRawDataCollection>(conf.getParameter<edm::InputTag>("fedRawDataCollectionTag"));
 
     if (triggerFed_ >=0) {
       std::cout << "HcalTBObjectUnpacker will unpack Trigger FED ";
@@ -93,26 +93,20 @@ using namespace std;
   {
     // Step A: Get Inputs 
     edm::Handle<FEDRawDataCollection> rawraw;  
-    e.getByLabel(fedRawDataCollectionTag_, rawraw);           
+    e.getByToken(tok_raw_, rawraw);           
 
     // Step B: Create empty output    
-    std::auto_ptr<HcalTBTriggerData>
-      trigd(new HcalTBTriggerData);
+    auto trigd = std::make_unique<HcalTBTriggerData>();
 
-    std::auto_ptr<HcalTBRunData>
-      rund(new HcalTBRunData);
+    auto rund = std::make_unique<HcalTBRunData>();
 
-    std::auto_ptr<HcalTBEventPosition>
-      epd(new HcalTBEventPosition);
+    auto epd = std::make_unique<HcalTBEventPosition>();
 
-    std::auto_ptr<HcalTBTiming>
-      tmgd(new HcalTBTiming);
+    auto tmgd = std::make_unique<HcalTBTiming>();
 
-    std::auto_ptr<HcalTBBeamCounters>
-      bcntd(new HcalTBBeamCounters);
+    auto bcntd = std::make_unique<HcalTBBeamCounters>();
 
-    std::auto_ptr<HcalSourcePositionData>
-      spd(new HcalSourcePositionData);
+    auto spd = std::make_unique<HcalSourcePositionData>();
     
     if (triggerFed_ >=0) {
       // Step C: unpack all requested FEDs
@@ -147,12 +141,12 @@ using namespace std;
     }
 
     // Step D: Put outputs into event
-    if (doTriggerData_) e.put(trigd);
-    if (doRunData_) e.put(rund);
-    if (doEventPosition_) e.put(epd);
-    if (doTiming_) e.put(tmgd);
-    if (doBeamADC_) e.put(bcntd);
-    if (doSourcePos_) e.put(spd);
+    if (doTriggerData_) e.put(std::move(trigd));
+    if (doRunData_) e.put(std::move(rund));
+    if (doEventPosition_) e.put(std::move(epd));
+    if (doTiming_) e.put(std::move(tmgd));
+    if (doBeamADC_) e.put(std::move(bcntd));
+    if (doSourcePos_) e.put(std::move(spd));
   }
 
 

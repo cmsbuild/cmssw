@@ -41,17 +41,17 @@ CATopJetProducer::CATopJetProducer(edm::ParameterSet const& conf):
 	}
 	else if (tagAlgo_ == FJ_CMS_TOPTAG ) {
 		fjCMSTopTagger_ = std::auto_ptr<fastjet::CMSTopTagger>(
-			new fastjet::CMSTopTagger()
-		);
-	}
-	else if (tagAlgo_ == FJ_HEP_TOPTAG ) {
-		fjHEPTopTagger_ = std::auto_ptr<fastjet::HEPTopTagger>(
-			new fastjet::HEPTopTagger()
+			new fastjet::CMSTopTagger(conf.getParameter<double> ("ptFrac"),
+						  conf.getParameter<double> ("rFrac"),
+						  conf.getParameter<double> ("adjacencyParam"))
 		);
 	}
 	else if (tagAlgo_ == FJ_JHU_TOPTAG ) {
 		fjJHUTopTagger_ = std::auto_ptr<fastjet::JHTopTagger>(
-			new fastjet::JHTopTagger()
+			new fastjet::JHTopTagger(conf.getParameter<double>("ptFrac"),
+						 conf.getParameter<double>("deltaRCut"),
+						 conf.getParameter<double>("cosThetaWMax")
+						 )
 		);
 	}
 	else if (tagAlgo_ == FJ_NSUB_TAG ) {
@@ -59,7 +59,11 @@ CATopJetProducer::CATopJetProducer(edm::ParameterSet const& conf):
 		fastjet::JetDefinition::Plugin *plugin = new fastjet::SISConePlugin(0.6, 0.75);
 		fastjet::JetDefinition NsubJetDef(plugin);
 		fjNSUBTagger_ = std::auto_ptr<fastjet::RestFrameNSubjettinessTagger>(
-			new fastjet::RestFrameNSubjettinessTagger(NsubJetDef)
+			new fastjet::RestFrameNSubjettinessTagger(NsubJetDef,
+								  conf.getParameter<double>("tau2Cut"),
+								  conf.getParameter<double>("cosThetaSCut"),
+								  conf.getParameter<bool>("useExclusive")
+								  )
 		);
 	}
 				
@@ -104,7 +108,6 @@ void CATopJetProducer::runAlgorithm( edm::Event& iEvent, const edm::EventSetup& 
 	}
 
 	fastjet::CMSTopTagger & CMSTagger = *fjCMSTopTagger_;
-	fastjet::HEPTopTagger & HEPTagger = *fjHEPTopTagger_;
 	fastjet::JHTopTagger & JHUTagger = *fjJHUTopTagger_;
 	fastjet::RestFrameNSubjettinessTagger & NSUBTagger = *fjNSUBTagger_;
 
@@ -117,7 +120,6 @@ void CATopJetProducer::runAlgorithm( edm::Event& iEvent, const edm::EventSetup& 
 
 		fastjet::PseudoJet taggedJet;
 		if (tagAlgo_ == FJ_CMS_TOPTAG) taggedJet = CMSTagger.result(*jetIt);
-		else if (tagAlgo_ == FJ_HEP_TOPTAG) taggedJet = HEPTagger.result(*jetIt);
 		else if (tagAlgo_ == FJ_JHU_TOPTAG) taggedJet = JHUTagger.result(*jetIt);
 		else if (tagAlgo_ == FJ_NSUB_TAG) taggedJet = NSUBTagger.result(*jetIt);
 		else cout << "NOT A VALID TAGGING ALGORITHM CHOICE!" << endl;

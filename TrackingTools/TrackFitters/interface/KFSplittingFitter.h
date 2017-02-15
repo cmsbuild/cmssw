@@ -5,15 +5,13 @@
  *  A Kalman track fit that splits matched RecHits into individual
  *  components before fitting them. Ported from ORCA
  *
- *  $Date: 2007/05/09 14:17:57 $
- *  $Revision: 1.6 $
  *  \author todorov, cerati
  */
 
 #include "TrackingTools/TrackFitters/interface/KFTrajectoryFitter.h"
 #include "TrackingTools/TrackFitters/interface/RecHitSplitter.h"
 
-class KFSplittingFitter GCC11_FINAL : public TrajectoryFitter {
+class KFSplittingFitter final : public TrajectoryFitter {
 
 private:
 
@@ -22,7 +20,7 @@ private:
   typedef TrajectoryStateOnSurface TSOS;
   typedef FreeTrajectoryState FTS;
   typedef TrajectoryMeasurement TM;
-  
+
 public:
 
   KFSplittingFitter(const Propagator& aPropagator,
@@ -33,22 +31,29 @@ public:
 
   KFSplittingFitter(const Propagator* aPropagator,
 		    const TrajectoryStateUpdator* aUpdator,
-		    const MeasurementEstimator* aEstimator) : 
+		    const MeasurementEstimator* aEstimator) :
     fitter(aPropagator, aUpdator, aEstimator) {}
 
-  virtual KFSplittingFitter* clone() const {
-    return new KFSplittingFitter(fitter.propagator(),fitter.updator(),fitter.estimator());
+    virtual std::unique_ptr<TrajectoryFitter> clone() const override {
+      return std::unique_ptr<TrajectoryFitter>(
+          new KFSplittingFitter(fitter.propagator(),
+                                fitter.updator(),
+                                fitter.estimator()));
   }
-  
+
   Trajectory fitOne(const Trajectory& aTraj,
-		    fitType type) const;
+		    fitType type) const override;
   Trajectory fitOne(const TrajectorySeed& aSeed,
 		    const RecHitContainer& hits,
-		    fitType type) const;
+		    fitType type) const override;
  Trajectory fitOne(const TrajectorySeed& aSeed,
-		    const RecHitContainer& hits, 
+		    const RecHitContainer& hits,
 		    const TSOS& firstPredTsos,
-		    fitType type) const;
+		    fitType type) const override;
+
+  virtual void setHitCloner(TkCloner const * hc)  override{
+        fitter.setHitCloner(hc);
+  }
 
  private :
 

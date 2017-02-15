@@ -5,8 +5,6 @@
  *
  *   Description: Producer for the Parametrized Magnetic Field
  *
- *  $Date: 2008/05/06 12:04:34 $
- *  $Revision: 1.1 $
  *  \author Massimiliano Chiorboli, updated NA 03/08
  */
 
@@ -24,7 +22,7 @@ namespace magneticfield {
     ParametrizedMagneticFieldProducer(const edm::ParameterSet&);
     ~ParametrizedMagneticFieldProducer();
     
-    std::auto_ptr<MagneticField> produce(const IdealMagneticFieldRecord&);
+    std::unique_ptr<MagneticField> produce(const IdealMagneticFieldRecord&);
     edm::ParameterSet pset;
   };
 }

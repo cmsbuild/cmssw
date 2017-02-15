@@ -24,7 +24,7 @@
 #include <time.h>
 #include <xercesc/dom/DOM.hpp>
 #include <xercesc/util/XMLString.hpp>
-#include <xercesc/util/PlatformUtils.hpp>
+#include "FWCore/Concurrency/interface/Xerces.h"
 #include <xercesc/dom/DOMNode.hpp>
 #include <xercesc/framework/MemBufInputSource.hpp>
 #include <cstdio>
@@ -38,7 +38,6 @@
 #include "CalibCalorimetry/HcalTPGAlgos/interface/XMLDOMBlock.h"
 
 
-XERCES_CPP_NAMESPACE_USE 
 
 class XMLProcessor
 {
@@ -150,7 +149,7 @@ class XMLProcessor
     }
   
   // returns XML std::string if target == "string" otherwise NULL
-  XMLCh * serializeDOM( DOMNode* node, std::string target = "stdout" );
+  XMLCh * serializeDOM( XERCES_CPP_NAMESPACE::DOMNode* node, std::string target = "stdout" );
 
   inline static XMLCh * _toXMLCh( std::string temp );
   inline static XMLCh * _toXMLCh( int temp );
@@ -183,7 +182,7 @@ class XMLProcessor
 
 inline XMLCh* XMLProcessor::_toXMLCh( std::string temp )
 {
-  XMLCh* buff = XMLString::transcode(temp.c_str());    
+  XMLCh* buff = XERCES_CPP_NAMESPACE::XMLString::transcode(temp.c_str());    
   return  buff;
 }
 
@@ -199,7 +198,7 @@ inline XMLCh* XMLProcessor::_toXMLCh( int temp )
     {
       std::cout << "XMLProcessor::_toXMLCh(int temp): output error" << std::endl;
     }
-  XMLCh* buff = XMLString::transcode( buf );    
+  XMLCh* buff = XERCES_CPP_NAMESPACE::XMLString::transcode( buf );    
   return  buff;
 }
 
@@ -215,7 +214,7 @@ inline XMLCh* XMLProcessor::_toXMLCh( double temp )
     {
       std::cout << "XMLProcessor::_toXMLCh(int temp): output error" << std::endl;
     }
-  XMLCh* buff = XMLString::transcode( buf );    
+  XMLCh* buff = XERCES_CPP_NAMESPACE::XMLString::transcode( buf );    
   return  buff;
 }
 
@@ -227,7 +226,7 @@ inline XMLCh* XMLProcessor::_toXMLCh( time_t temp )
     {
       std::cout << "XML  Processor::_toXMLCh(int temp): buffer overflow, the std::string is indeterminate!" << std::endl;
     }
-  XMLCh* buff = XMLString::transcode( buf );    
+  XMLCh* buff = XERCES_CPP_NAMESPACE::XMLString::transcode( buf );    
   return  buff;
 }
 

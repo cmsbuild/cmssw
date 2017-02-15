@@ -4,10 +4,12 @@
 <use   name="CalibCalorimetry/HcalAlgos"/>
 <use   name="DataFormats/DetId"/>
 <use   name="DataFormats/HcalDetId"/>
+<use   name="FWCore/Concurrency"/>
 <use   name="CondFormats/HcalObjects"/>
 <use   name="CalibFormats/CaloObjects"/>
 <use   name="CondFormats/DataRecord"/>
 <use   name="xerces-c"/>
+<use   name="md5"/>
 <export>
   <lib   name="1"/>
 </export>

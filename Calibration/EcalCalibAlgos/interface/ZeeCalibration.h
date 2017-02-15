@@ -98,7 +98,7 @@ class ZeeCalibration : public edm::ESProducerLooper {
   virtual Status duringLoop( const edm::Event&, const edm::EventSetup& );
   
   /// Produce Ecal interCalibrations
-  virtual boost::shared_ptr<EcalIntercalibConstants> produceEcalIntercalibConstants( const EcalIntercalibConstantsRcd& iRecord );
+  virtual std::shared_ptr<EcalIntercalibConstants> produceEcalIntercalibConstants( const EcalIntercalibConstantsRcd& iRecord );
 
  private:
 
@@ -132,7 +132,7 @@ class ZeeCalibration : public edm::ESProducerLooper {
 
   void printStatistics();
 
-  std::pair<DetId, double> getHottestDetId(std::vector<std::pair<DetId, float> > mySCRecHits, const EBRecHitCollection* ebhits , const EERecHitCollection* eehits);
+  std::pair<DetId, double> getHottestDetId(const std::vector<std::pair<DetId, float> >& mySCRecHits, const EBRecHitCollection* ebhits , const EERecHitCollection* eehits);
 
   bool xtalIsOnModuleBorder( EBDetId myEBDetId );
 
@@ -192,7 +192,7 @@ class ZeeCalibration : public edm::ESProducerLooper {
   float calibCoeffError[nMaxChannels];
    float initCalibCoeff[nMaxChannels];
 
-  boost::shared_ptr<EcalIntercalibConstants> ical;
+  std::shared_ptr<EcalIntercalibConstants> ical;
   
   ZIterativeAlgorithmWithFit* theAlgorithm_;
 

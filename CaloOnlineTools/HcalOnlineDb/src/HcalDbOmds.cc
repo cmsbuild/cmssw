@@ -17,6 +17,12 @@
 #include "CaloOnlineTools/HcalOnlineDb/interface/HcalDbOmds.h"
 #include "CaloOnlineTools/HcalOnlineDb/interface/RooGKCounter.h"
 
+#ifdef HAVE_XDAQ
+#include "toolbox/string.h"
+#else
+#include "CaloOnlineTools/HcalOnlineDb/interface/xdaq_compat.h"  // Replaces toolbox::toString
+#endif
+
 typedef oracle::occi::ResultSet ResultSet;
 typedef oracle::occi::SQLException SQLException;
 
@@ -957,6 +963,7 @@ HcalZDCDetId::Section HcalDbOmds::get_zdc_section( std::string _section )
   else if ( _section.find("EM") != std::string::npos )   result = HcalZDCDetId::EM;
   else if ( _section.find("HAD") != std::string::npos )  result = HcalZDCDetId::HAD;
   else if ( _section.find("LUM") != std::string::npos ) result = HcalZDCDetId::LUM;
+  else if ( _section.find("RPD") != std::string::npos ) result = HcalZDCDetId::RPD;
   else                                              result = HcalZDCDetId::Unknown;  
   
   return result;

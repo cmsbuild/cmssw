@@ -37,7 +37,7 @@ using namespace HepMC;
  
 EvtGenTestAnalyzer::EvtGenTestAnalyzer( const ParameterSet& pset )
    : fOutputFileName( pset.getUntrackedParameter<string>("HistOutFile",std::string("TestBs.root")) ),
-     theSrc( pset.getUntrackedParameter<string>("theSrc",std::string("source")) ), 
+     tokenHepMC_(consumes<edm::HepMCProduct>(edm::InputTag(pset.getUntrackedParameter("moduleLabel",std::string("generator")),"unsmeared"))),
      fOutputFile(0)
 {
 }
@@ -89,22 +89,17 @@ void EvtGenTestAnalyzer::beginJob()
    hPhi2 = new TH1D( "hPhi2","#phi_{2}",  50, -3.14, 3.14) ;
    hCosThetaLambda = new TH1D( "hCosThetaLambda","cos#theta_{#Lambda}",  50, -1., 1.) ;
 
-   decayed = new ofstream("decayed.txt") ;
-   undecayed = new ofstream("undecayed.txt") ;
+   decayed = new std::ofstream("decayed.txt") ;
+   undecayed = new std::ofstream("undecayed.txt") ;
    return ;
 }
  
 void EvtGenTestAnalyzer::analyze( const Event& e, const EventSetup& )
 {
       
-   Handle< HepMCProduct > EvtHandle ;
-   
-   // find initial HepMCProduct by its label - source
-   // OR
-   // find HepMCProduct after evtgenlhc by its label - evtgenproducer, that is
-   // 
-   e.getByLabel( theSrc , EvtHandle ) ;
-   
+   Handle< HepMCProduct > EvtHandle;
+   e.getByToken( tokenHepMC_ , EvtHandle );
+
    const GenEvent* Evt = EvtHandle->GetEvent() ;
    if (Evt) nevent++;
 

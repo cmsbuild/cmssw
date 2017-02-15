@@ -17,10 +17,9 @@
 #include "CaloOnlineTools/HcalOnlineDb/interface/HcalL1TriggerObjectsXml.h"
 #include "CaloOnlineTools/HcalOnlineDb/interface/ConnectionManager.h"
 #include "CaloOnlineTools/HcalOnlineDb/interface/ConfigurationDatabaseException.hh"
-#include "xgi/Utils.h"
-#include "toolbox/string.h"
 #include "OnlineDB/Oracle/interface/Oracle.h"
 
+XERCES_CPP_NAMESPACE_USE 
 using namespace std;
 using namespace oracle::occi;
 

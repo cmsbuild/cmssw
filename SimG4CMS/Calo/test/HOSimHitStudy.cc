@@ -3,7 +3,6 @@
 #include "DataFormats/HcalDetId/interface/HcalDetId.h"
 #include "SimG4CMS/Calo/interface/CaloHitID.h"
 #include "SimG4CMS/Calo/interface/HcalTestNumberingScheme.h"
-#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
 
 #include "FWCore/Utilities/interface/Exception.h"
 #include "CLHEP/Units/GlobalPhysicalConstants.h"
@@ -13,10 +12,14 @@
 
 HOSimHitStudy::HOSimHitStudy(const edm::ParameterSet& ps) {
 
-  sourceLabel = ps.getUntrackedParameter<std::string>("SourceLabel","generator");
+  tok_evt_ = consumes<edm::HepMCProduct>(edm::InputTag(ps.getUntrackedParameter<std::string>("SourceLabel","VtxSmeared")));
   g4Label   = ps.getUntrackedParameter<std::string>("ModuleLabel","g4SimHits");
   hitLab[0] = ps.getUntrackedParameter<std::string>("EBCollection","EcalHitsEB");
   hitLab[1] = ps.getUntrackedParameter<std::string>("HCCollection","HcalHits");
+
+  for ( unsigned i=0; i != 2; i++ )
+    toks_calo_[i] = consumes<edm::PCaloHitContainer>(edm::InputTag(g4Label,hitLab[i]));
+
   maxEnergy = ps.getUntrackedParameter<double>("MaxEnergy", 200.0);
   scaleEB   = ps.getUntrackedParameter<double>("ScaleEB", 1.0);
   scaleHB   = ps.getUntrackedParameter<double>("ScaleHB", 100.0);
@@ -277,7 +280,7 @@ void HOSimHitStudy::analyze(const edm::Event& e, const edm::EventSetup& ) {
 		       << e.id().event();
 
   edm::Handle<edm::HepMCProduct > EvtHandle;
-  e.getByLabel(sourceLabel, EvtHandle);
+  e.getByToken(tok_evt_, EvtHandle);
   const  HepMC::GenEvent* myGenEvent = EvtHandle->GetEvent();
 
   eInc = etaInc = phiInc = 0;
@@ -296,7 +299,7 @@ void HOSimHitStudy::analyze(const edm::Event& e, const edm::EventSetup& ) {
     if (i == 0) ecalHits.clear();
     else        hcalHits.clear();
     edm::Handle<edm::PCaloHitContainer> hitsCalo;
-    e.getByLabel(g4Label,hitLab[i],hitsCalo); 
+    e.getByToken(toks_calo_[i],hitsCalo); 
     if (hitsCalo.isValid()) getHits = true;
     LogDebug("HitStudy") << "HcalValidation: Input flag " << hitLab[i] 
 			 << " getHits flag " << getHits;
@@ -499,8 +502,10 @@ void HOSimHitStudy::analyzeHits () {
   eHO17T_->Fill(etaInc,eHO17T);
   eHO18T_->Fill(etaInc,eHO18T);
   int nHO=0, nHOT=0;
-  if (eHO17 > 0) nHO++; if (eHO17T > 0) nHOT++;
-  if (eHO18 > 0) nHO++; if (eHO18T > 0) nHOT++;
+  if (eHO17 > 0) nHO++; 
+  if (eHO17T > 0) nHOT++;
+  if (eHO18 > 0) nHO++; 
+  if (eHO18T > 0) nHOT++;
   nHO1_->Fill(etaInc,(double)(nHO));
   nHO2_->Fill(etaInc,phiInc,(double)(nHO));
   nHO1T_->Fill(etaInc,(double)(nHOT));
@@ -526,8 +531,10 @@ void HOSimHitStudy::analyzeHits () {
     nHOE1T_[ieta]->Fill((double)(nHOT));
     nHOE2T_[ieta]->Fill(phiInc,(double)(nHOT));
     int nHOE=0, nHOET=0;
-    if (eHOE17[ieta] > 0) nHOE++; if (eHOE17T[ieta] > 0) nHOET++;
-    if (eHOE18[ieta] > 0) nHOE++; if (eHOE18T[ieta] > 0) nHOET++;
+    if (eHOE17[ieta] > 0) nHOE++;
+    if (eHOE17T[ieta] > 0) nHOET++;
+    if (eHOE18[ieta] > 0) nHOE++; 
+    if (eHOE18T[ieta] > 0) nHOET++;
     nHOEta1_[ieta]->Fill((double)(nHOE));
     nHOEta2_[ieta]->Fill(phiInc,(double)(nHOE));
     nHOEta1T_[ieta]->Fill((double)(nHOET));

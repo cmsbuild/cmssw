@@ -1,16 +1,25 @@
+#include <ostream>
+#include <string>
+#include <utility>
 #include <vector>
+
+#include "DetectorDescription/Base/interface/Store.h"
+#include "DetectorDescription/Core/interface/DDBase.h"
 #include "DetectorDescription/Core/interface/DDMaterial.h"
-#include "DetectorDescription/Core/src/Material.h"
+#include "DetectorDescription/Core/interface/DDName.h"
+
+namespace DDI {
+class Material;
+}  // namespace DDI
 
 // internal usage
-bool DDCheckMaterial(DDMaterial& mip, std::pair<std::string,DDName> & result)
+bool DDCheckMaterial(DDMaterial& mip, std::pair<std::string,DDName> & result, int rlevel = 0)
 {
    std::string no_composites = " NO-COMPOSITES ";
    std::string no_density    = " NO-DENSITY ";
    std::string costit_nok    = " CONSTITUENT NOK ";
    std::string no_z = " NO-Z ";
    std::string no_a = " NO-A "; 
-   static int rlevel = 0;
       
       std::string curr_err = "";
       bool err = false;
@@ -30,12 +39,7 @@ bool DDCheckMaterial(DDMaterial& mip, std::pair<std::string,DDName> & result)
 	result.first = curr_err;
 	return err;	    
       }
-/*
-     else {
-        edm::LogInfo << " material name=" << flush 
-	     << *mip.isDefined().first << std::endl;
-      }
-*/      
+
       DDMaterial & mp = mip;
       result.second=mp.ddname();	 
       
@@ -74,11 +78,10 @@ bool DDCheckMaterial(DDMaterial& mip, std::pair<std::string,DDName> & result)
 	DDMaterial mat(mp.ddname()); // bit slow but comfortable ...
 	DDMaterial mimpl = mat.constituent(loop).first;
 	++rlevel; // recursion level
-	bool c_err = DDCheckMaterial(mimpl,res);
+	bool c_err = DDCheckMaterial(mimpl,res, rlevel);
 	if (c_err) {
 	  err = err | c_err;
 	  curr_err = curr_err + std::string(" constituents have errors:\n") + std::string(4*rlevel,' ') 
-	           //+ res.second.ns() + std::string(":") + res.second.name() 
 		   + std::string(" ") + res.first;
 	  result.first=curr_err;	   
 	}
@@ -95,17 +98,12 @@ bool DDCheckMaterials(std::ostream & os, std::vector<std::pair<std::string,DDNam
    bool result = false;
    std::vector<std::pair<std::string,DDName> > errors;
    
-   
-   //DDMaterialReg::instance_t& mr = DDMaterialReg::instance();
-   //DDMaterialReg::instance_t::iterator i = mr.begin();
-   typedef DDBase<DDName,DDI::Material*>::StoreT RegT;
-   RegT::value_type& mr = RegT::instance();
-   RegT::value_type::iterator i = mr.begin();
-   //edm::LogError("DDCheckMaterials") << " material checking, registry access, exiting! " << std::endl; exit(1);
-   for(; i != mr.end(); ++i) {
+   auto& mr = DDBase<DDName,DDI::Material*>::StoreT::instance();
+
+   for( const auto& i : mr ) {
 	std::pair<std::string,DDName> error("","");
-	DDMaterial tmat(i->first); 
-	//exit(1);
+	DDMaterial tmat(i.first); 
+
 	if (DDCheckMaterial(tmat,error)) {
 	   errors.push_back(error);
 	}	      
@@ -115,9 +113,8 @@ bool DDCheckMaterials(std::ostream & os, std::vector<std::pair<std::string,DDNam
    os << "[DDCore:Report] Materials " << std::endl;
    os << s << mr.size() << " Materials declared" << std::endl;
    os << s << "detected errors:" << errors.size() << std::endl;
-   std::vector<std::pair<std::string,DDName> >::iterator j = errors.begin();
-   for (;j!=errors.end();++j) {
-     os << std::endl << s << j->second << "  " << j->first << std::endl;
+   for( auto j : errors ) {
+     os << std::endl << s << j.second << "  " << j.first << std::endl;
      result = true;
    }
    if(res) *res = errors;

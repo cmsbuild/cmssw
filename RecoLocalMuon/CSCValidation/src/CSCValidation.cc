@@ -39,18 +39,19 @@ CSCValidation::CSCValidation(const ParameterSet& pset){
   useTriggerFilter     = pset.getUntrackedParameter<bool>("useTriggerFilter",false);
 
   // input tags for collections
-  stripDigiTag  = pset.getParameter<edm::InputTag>("stripDigiTag");
-  wireDigiTag   = pset.getParameter<edm::InputTag>("wireDigiTag"); 
-  compDigiTag   = pset.getParameter<edm::InputTag>("compDigiTag");
-  alctDigiTag   = pset.getParameter<edm::InputTag>("alctDigiTag") ;
-  clctDigiTag   = pset.getParameter<edm::InputTag>("clctDigiTag") ;
-  corrlctDigiTag= pset.getParameter<edm::InputTag>("corrlctDigiTag") ;
-  cscRecHitTag  = pset.getParameter<edm::InputTag>("cscRecHitTag");
-  cscSegTag     = pset.getParameter<edm::InputTag>("cscSegTag");
-  saMuonTag     = pset.getParameter<edm::InputTag>("saMuonTag");
-  l1aTag        = pset.getParameter<edm::InputTag>("l1aTag");
-  simHitTag     = pset.getParameter<edm::InputTag>("simHitTag");
-  hltTag        = pset.getParameter<edm::InputTag>("hltTag");
+  rd_token = consumes<FEDRawDataCollection>( pset.getParameter<edm::InputTag>("rawDataTag") );
+  sd_token = consumes<CSCStripDigiCollection>( pset.getParameter<edm::InputTag>("stripDigiTag") );
+  wd_token = consumes<CSCWireDigiCollection>( pset.getParameter<edm::InputTag>("wireDigiTag") );
+  cd_token = consumes<CSCComparatorDigiCollection>( pset.getParameter<edm::InputTag>("compDigiTag") );
+  al_token = consumes<CSCALCTDigiCollection>( pset.getParameter<edm::InputTag>("alctDigiTag") );
+  cl_token = consumes<CSCCLCTDigiCollection>( pset.getParameter<edm::InputTag>("clctDigiTag") );
+  co_token = consumes<CSCCorrelatedLCTDigiCollection>( pset.getParameter<edm::InputTag>("corrlctDigiTag") );
+  rh_token = consumes<CSCRecHit2DCollection>( pset.getParameter<edm::InputTag>("cscRecHitTag") );
+  se_token = consumes<CSCSegmentCollection>( pset.getParameter<edm::InputTag>("cscSegTag") );
+  sa_token = consumes<reco::TrackCollection>( pset.getParameter<edm::InputTag>("saMuonTag") );
+  l1_token = consumes<L1MuGMTReadoutCollection>( pset.getParameter<edm::InputTag>("l1aTag") );
+  tr_token = consumes<TriggerResults>( pset.getParameter<edm::InputTag>("hltTag") );
+  sh_token = consumes<PSimHitContainer>( pset.getParameter<edm::InputTag>("simHitTag") );
 
   // flags to switch on/off individual modules
   makeOccupancyPlots   = pset.getUntrackedParameter<bool>("makeOccupancyPlots",true);
@@ -190,21 +191,21 @@ void CSCValidation::analyze(const Event & event, const EventSetup& eventSetup){
   edm::Handle<CSCCLCTDigiCollection> clcts;
   edm::Handle<CSCCorrelatedLCTDigiCollection> correlatedlcts;
   if (useDigis){
-    event.getByLabel(stripDigiTag,strips);
-    event.getByLabel(wireDigiTag,wires);
-    event.getByLabel(compDigiTag,compars);
-    event.getByLabel(alctDigiTag, alcts);
-    event.getByLabel(clctDigiTag, clcts);
-    event.getByLabel(corrlctDigiTag, correlatedlcts);
+    event.getByToken( sd_token, strips );
+    event.getByToken( wd_token, wires );
+    event.getByToken( cd_token, compars );
+    event.getByToken( al_token, alcts );
+    event.getByToken( cl_token, clcts );
+    event.getByToken( co_token, correlatedlcts );
  }
 
   // Get the CSC Geometry :
-  ESHandle<CSCGeometry> cscGeom;
+  edm::ESHandle<CSCGeometry> cscGeom;
   eventSetup.get<MuonGeometryRecord>().get(cscGeom);
 
   // Get the RecHits collection :
-  Handle<CSCRecHit2DCollection> recHits;
-  event.getByLabel(cscRecHitTag,recHits);
+  edm::Handle<CSCRecHit2DCollection> recHits;
+  event.getByToken( rh_token, recHits );
 
   //CSCRecHit2DCollection::const_iterator recIt;
   //for (recIt = recHits->begin(); recIt != recHits->end(); recIt++) {
@@ -213,25 +214,28 @@ void CSCValidation::analyze(const Event & event, const EventSetup& eventSetup){
 
 
   // Get the SimHits (if applicable)
-  Handle<PSimHitContainer> simHits;
-  if (isSimulation) event.getByLabel(simHitTag, simHits);
+  edm::Handle<PSimHitContainer> simHits;
+  if ( isSimulation ) event.getByToken( sh_token, simHits );
 
   // get CSC segment collection
-  Handle<CSCSegmentCollection> cscSegments;
-  event.getByLabel(cscSegTag, cscSegments);
+  edm::Handle<CSCSegmentCollection> cscSegments;
+  event.getByToken( se_token, cscSegments );
 
   // get the trigger collection
   edm::Handle<L1MuGMTReadoutCollection> pCollection;
   if (makeTriggerPlots || useTriggerFilter || (useDigis && makeTimeMonitorPlots)){
-    event.getByLabel(l1aTag,pCollection);
+    event.getByToken( l1_token, pCollection );
   }
   edm::Handle<TriggerResults> hlt;
-  if (makeHLTPlots) event.getByLabel(hltTag,hlt);
+  if (makeHLTPlots) {
+      event.getByToken( tr_token, hlt );
+  }
 
   // get the standalone muon collection
-  Handle<reco::TrackCollection> saMuons;
-  if (makeStandalonePlots || useQualityFilter) event.getByLabel(saMuonTag,saMuons);
-
+  edm::Handle<reco::TrackCollection> saMuons;
+  if (makeStandalonePlots || useQualityFilter) {
+     event.getByToken( sa_token, saMuons );
+  }
 
 
   /////////////////////
@@ -1492,7 +1496,7 @@ void CSCValidation::doEfficiencies(edm::Handle<CSCWireDigiCollection> wires, edm
   if(theSeg.size()){
     std::map <int , GlobalPoint> extrapolatedPoint;
     std::map <int , GlobalPoint>::iterator it;
-    const std::vector<CSCChamber*> ChamberContainer = cscGeom->chambers();
+    const CSCGeometry::ChamberContainer& ChamberContainer = cscGeom->chambers();
     // Pick which chamber with which segment to test
     for(size_t nCh=0;nCh<ChamberContainer.size();nCh++){
       const CSCChamber *cscchamber = ChamberContainer[nCh];
@@ -2579,57 +2583,57 @@ void CSCValidation::doADCTiming(const CSCRecHit2DCollection& rechitcltn) {
               float adcmax=0.0;
  
               for(unsigned int i=0;i<recIt->nStrips();i++) 
-		for(unsigned int j=0;j<recIt->nTimeBins();j++)
-		  if(recIt->adcs(i,j)>adcmax) {
-		    adcmax=recIt->adcs(i,j); 
-		    binmx=j;
-		  }
+                for(unsigned int j=0;j<recIt->nTimeBins();j++)
+                  if(recIt->adcs(i,j)>adcmax) {
+                    adcmax=recIt->adcs(i,j); 
+                    binmx=j;
+                  }
 
-	      adc_3_3_sum=0.0;
-	      //well, this really only works for 3 strips in readout - not sure the right fix for general case
-              for(unsigned int i=0;i<recIt->nStrips();i++) 
-		for(unsigned int j=binmx-1;j<=binmx+1;j++) 
-		  adc_3_3_sum+=recIt->adcs(i,j);
-
-
-                // ADC weighted time bin
-                if(adc_3_3_sum > 100.0) {
-                  
-
-		  int centerStrip=recIt->channels(1); //take central from 3 strips;
-                // temporary fix
-                  int flag=0;
-                  if(id.station()==1 && id.ring()==4 &&  centerStrip>16) flag=1;
-                // end of temporary fix
-                  if(flag==0) {
-                  adc_3_3_wtbin=(*recIt).tpeak()/50;   //getTiming(strpcltn, id, centerStrip);
-                  idchamber=indexer.dbIndex(id, centerStrip)/10; //strips 1-16 ME1/1a
-                                              // become strips 65-80 ME1/1 !!!
-                  /*
-                  if(id.station()==1 && (id.ring()==1 || id.ring()==4))
-                  std::cout<<idchamber<<" "<<id.station()<<" "<<id.ring()<<" "<<m_strip[1]<<" "<<
-                      "      "<<centerStrip<<
-                         " "<<adc_3_3_wtbin<<"     "<<adc_3_3_sum<<std::endl;    
-                  */      
-                 ss<<"adc_3_3_weight_time_bin_vs_cfeb_occupancy_ME_"<<idchamber;
-                 name=ss.str(); ss.str("");
-
-                 std::string endcapstr;
-                 if(id.endcap() == 1) endcapstr = "+";
-                 if(id.endcap() == 2) endcapstr = "-";
-                 ring=id.ring(); if(id.ring()==4) ring=1;
-                 ss<<"ADC 3X3 Weighted Time Bin vs CFEB Occupancy ME"
-                   <<endcapstr<<id.station()<<"/"<<ring<<"/"<<id.chamber();
-                 title=ss.str(); ss.str("");
-
-                 cfeb=(centerStrip-1)/16+1;
-                 x=cfeb; y=adc_3_3_wtbin;
-                 histos->fill2DHist(x,y,name.c_str(),title.c_str(),5,1.,6.,80,-8.,8.,"ADCTiming");                                     
-                 } // end of if flag==0
-                } // end of if (adc_3_3_sum > 100.0)
+               adc_3_3_sum=0.0;
+               //well, this really only works for 3 strips in readout - not sure the right fix for general case
+               for(unsigned int i=0;i<recIt->nStrips();i++) 
+                  for(unsigned int j=binmx-1;j<=binmx+1;j++) 
+                       adc_3_3_sum+=recIt->adcs(i,j);
+      
+      
+                  // ADC weighted time bin
+               if(adc_3_3_sum > 100.0) {
+                           
+      
+                 int centerStrip=recIt->channels(1); //take central from 3 strips;
+                 // temporary fix
+                 int flag=0;
+                 if(id.station()==1 && id.ring()==4 &&  centerStrip>16) flag=1;
+                 // end of temporary fix
+                 if(flag==0) {
+                      adc_3_3_wtbin=(*recIt).tpeak()/50;   //getTiming(strpcltn, id, centerStrip);
+                      idchamber=indexer.dbIndex(id, centerStrip)/10; //strips 1-16 ME1/1a
+                                                  // become strips 65-80 ME1/1 !!!
+                      /*
+                      if(id.station()==1 && (id.ring()==1 || id.ring()==4))
+                      std::cout<<idchamber<<" "<<id.station()<<" "<<id.ring()<<" "<<m_strip[1]<<" "<<
+                          "      "<<centerStrip<<
+                             " "<<adc_3_3_wtbin<<"     "<<adc_3_3_sum<<std::endl;    
+                      */      
+                     ss<<"adc_3_3_weight_time_bin_vs_cfeb_occupancy_ME_"<<idchamber;
+                     name=ss.str(); ss.str("");
+      
+                     std::string endcapstr;
+                     if(id.endcap() == 1) endcapstr = "+";
+                     if(id.endcap() == 2) endcapstr = "-";
+                     ring=id.ring(); if(id.ring()==4) ring=1;
+                     ss<<"ADC 3X3 Weighted Time Bin vs CFEB Occupancy ME"
+                       <<endcapstr<<id.station()<<"/"<<ring<<"/"<<id.chamber();
+                     title=ss.str(); ss.str("");
+      
+                     cfeb=(centerStrip-1)/16+1;
+                     x=cfeb; y=adc_3_3_wtbin;
+                     histos->fill2DHist(x,y,name.c_str(),title.c_str(),5,1.,6.,80,-8.,8.,"ADCTiming");                                     
+                     } // end of if flag==0
+                 } // end of if (adc_3_3_sum > 100.0)
             } // end of if if(m_strip.size()==3
-       } // end of the  pass thru CSCRecHit2DCollection
-     }  // end of if (rechitcltn.begin() != rechitcltn.end())
+        } // end of the  pass thru CSCRecHit2DCollection
+    }  // end of if (rechitcltn.begin() != rechitcltn.end())
 }
 
 //---------------------------------------------------------------------------------------
@@ -2856,7 +2860,7 @@ void CSCValidation::doTimeMonitoring(edm::Handle<CSCRecHit2DCollection> recHits,
   
   /// Get a handle to the FED data collection
   edm::Handle<FEDRawDataCollection> rawdata;
-  event.getByLabel("source", rawdata);
+  event.getByToken( rd_token, rawdata);
   bool goodEvent = false;
   // If set selective unpacking mode 
   // hardcoded examiner mask below to check for DCC and DDU level errors will be used first
@@ -2881,13 +2885,9 @@ void CSCValidation::doTimeMonitoring(edm::Handle<CSCRecHit2DCollection> recHits,
       ///examine event for integrity
       //CSCDCCExaminer examiner;
       examiner = new CSCDCCExaminer();
-      examiner->output1().redirect(examiner_out);
-      examiner->output2().redirect(examiner_err);
       if( examinerMask&0x40000 ) examiner->crcCFEB(1);
       if( examinerMask&0x8000  ) examiner->crcTMB (1);
       if( examinerMask&0x0400  ) examiner->crcALCT(1);
-      examiner->output1().show();
-      examiner->output2().show();
       examiner->setMask(examinerMask);
       const short unsigned int *data = (short unsigned int *)fedData.data();
      

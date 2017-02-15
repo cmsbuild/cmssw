@@ -33,8 +33,13 @@
    \author J.Cole modified by Marco De Mattia
 */
 
+// Unit test class for SiStripDetVOffBuilder
+class TestSiStripDetVOffBuilder;
+
 class SiStripDetVOffBuilder
 {
+  friend class TestSiStripDetVOffBuilder;
+
  public:
   /** Destructor. */
   ~SiStripDetVOffBuilder();
@@ -43,8 +48,8 @@ class SiStripDetVOffBuilder
   /** Build the SiStripDetVOff object for transfer. */
   void BuildDetVOffObj();
   /** Return modules Off vector of objects. */
-  std::vector< std::pair<SiStripDetVOff*,cond::Time_t> > getModulesVOff(const int deltaTmin = 1, const int maxIOVlength = 120) {
-    reduction(deltaTmin, maxIOVlength);
+  std::vector< std::pair<SiStripDetVOff*,cond::Time_t> > getModulesVOff() {
+    reduction(deltaTmin_, maxIOVlength_);
     return modulesOff;
   }
   /** Return statistics about payloads transferred for storage in logDB. */
@@ -82,15 +87,15 @@ class SiStripDetVOffBuilder
 
   /** Returns the PSU channel setting, based on date.  Works from DP ID. */
   int findSetting(uint32_t id, 
-		  coral::TimeStamp changeDate, 
-		  std::vector<uint32_t> settingID, 
-		  std::vector<coral::TimeStamp> settingDate);
+		  const coral::TimeStamp& changeDate, 
+		  const std::vector<uint32_t>& settingID, 
+		  const std::vector<coral::TimeStamp>& settingDate);
 
   /** Returns the PSU channel setting, based on date.  Works from PSU channel name. Overloaded. */
   int findSetting(std::string dpname, 
-		  coral::TimeStamp changeDate, 
-		  std::vector<std::string> settingDpname, 
-		  std::vector<coral::TimeStamp> settingDate);
+		  const coral::TimeStamp& changeDate, 
+		  const std::vector<std::string>& settingDpname, 
+		  const std::vector<coral::TimeStamp>& settingDate);
 
   /** Extract the lastValue values from file rather than from the PVSS cond DB. */
   void readLastValueFromFile(std::vector<uint32_t> &dpIDs,
@@ -98,7 +103,7 @@ class SiStripDetVOffBuilder
 			     std::vector<coral::TimeStamp> &dateChange);
 
   /** Utility code to convert a coral timestamp to the correct time format for O2O timestamp. */
-  cond::Time_t getCondTime(coral::TimeStamp coralTime);
+  cond::Time_t getCondTime(const coral::TimeStamp& coralTime);
 
   /** Utility code to convert an O2O timestamp into a coral timestamp. */
   coral::TimeStamp getCoralTime(cond::Time_t iovTime);
@@ -106,7 +111,7 @@ class SiStripDetVOffBuilder
   /** Utility code to remove all the duplicates from a vector of uint32_t. */
   void removeDuplicates( std::vector<uint32_t> & vec );
   /** */
-  cond::Time_t findMostRecentTimeStamp( std::vector<coral::TimeStamp> coralDate );
+  cond::Time_t findMostRecentTimeStamp( const std::vector<coral::TimeStamp>& coralDate );
   
   // member data
   std::vector< std::vector<uint32_t> > payloadStats;
@@ -123,6 +128,7 @@ class SiStripDetVOffBuilder
   bool debug_;
   coral::TimeStamp tmax, tmin, tsetmin;
   std::vector<int> tDefault, tmax_par, tmin_par, tset_par;
+  uint32_t deltaTmin_, maxIOVlength_;
 
   std::string detIdListFile_;
   std::string excludedDetIdListFile_;

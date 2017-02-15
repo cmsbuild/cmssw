@@ -16,7 +16,6 @@
 //
 // Original Author:  Christian Veelken, UC Davis
 //         Created:  Thu Nov  2 13:47:40 CST 2006
-// $Id: ConeAreaRootFunction.cc,v 1.3 2006/11/30 17:07:28 dwjang Exp $
 //
 //
 
@@ -74,7 +73,7 @@ void ConeAreaRootFunction::SetParameterConeArea(double coneArea)
   coneArea_ = coneArea;
 }
 
-void ConeAreaRootFunction::SetParameters(double* param)
+void ConeAreaRootFunction::SetParameters(const double* param)
 {
   if ( debugLevel_ > 0 ) {
     edm::LogVerbatim("") << "<ConeAreaRootFunction::SetParameters>:" << std::endl

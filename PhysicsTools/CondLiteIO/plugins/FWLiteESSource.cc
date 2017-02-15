@@ -14,14 +14,12 @@
 //
 // Original Author:  Chris Jones
 //         Created:  Thu Jun 17 15:47:35 CDT 2010
-// $Id: FWLiteESSource.cc,v 1.1 2010/06/22 21:51:16 chrjones Exp $
 //
 
 // system include files
 #include <iostream>
 #include <memory>
 #include "TFile.h"
-#include <boost/shared_ptr.hpp>
 
 // user include files
 #include "FWCore/Framework/interface/DataProxyProvider.h"
@@ -42,7 +40,7 @@
 // forward declarations
 namespace  {
    struct TypeID : public edm::TypeIDBase {
-      explicit TypeID(const type_info& iInfo): edm::TypeIDBase(iInfo) {}
+      explicit TypeID(const std::type_info& iInfo): edm::TypeIDBase(iInfo) {}
       TypeID() {}
       using TypeIDBase::typeInfo;
    };
@@ -207,7 +205,7 @@ FWLiteESSource::registerProxies(const edm::eventsetup::EventSetupRecordKey& iRec
       if(tt != HCTypeTag() ) {
          edm::eventsetup::DataKey dk(tt,edm::eventsetup::IdTags(it->second.c_str()));
          aProxyList.push_back(std::make_pair(dk,
-                                             boost::shared_ptr<edm::eventsetup::DataProxy>(new FWLiteProxy(TypeID(tt.value()),&rec))));
+                                             std::make_shared<FWLiteProxy>(TypeID(tt.value()),&rec)));
       } else {
          LogDebug("UnknownESType")<<"The type '"<<it->first<<"' is unknown in this job";
          std::cout <<"    *****FAILED*****"<<std::endl;

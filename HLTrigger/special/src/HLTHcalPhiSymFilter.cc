@@ -2,7 +2,7 @@
 #include "DataFormats/HLTReco/interface/TriggerFilterObjectWithRefs.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
-HLTHcalPhiSymFilter::HLTHcalPhiSymFilter(const edm::ParameterSet& iConfig) : HLTFilter(iConfig) 
+HLTHcalPhiSymFilter::HLTHcalPhiSymFilter(const edm::ParameterSet& iConfig) : HLTFilter(iConfig)
 {
   HBHEHits_ = iConfig.getParameter< edm::InputTag > ("HBHEHitCollection");
   HOHits_ = iConfig.getParameter< edm::InputTag > ("HOHitCollection");
@@ -49,22 +49,22 @@ HLTHcalPhiSymFilter::fillDescriptions(edm::ConfigurationDescriptions& descriptio
 
 // ------------ method called to produce the data  ------------
 bool
-HLTHcalPhiSymFilter::hltFilter(edm::Event& iEvent, const edm::EventSetup& iSetup, trigger::TriggerFilterObjectWithRefs & filterproduct)
+HLTHcalPhiSymFilter::hltFilter(edm::Event& iEvent, const edm::EventSetup& iSetup, trigger::TriggerFilterObjectWithRefs & filterproduct) const
 {
   edm::Handle<HBHERecHitCollection> HBHERecHitsH;
   edm::Handle<HORecHitCollection> HORecHitsH;
   edm::Handle<HFRecHitCollection> HFRecHitsH;
-  
+
   iEvent.getByToken(HBHEHitsToken_,HBHERecHitsH);
   iEvent.getByToken(HOHitsToken_,HORecHitsH);
   iEvent.getByToken(HFHitsToken_,HFRecHitsH);
- 
-  //Create empty output collections
-  std::auto_ptr< HBHERecHitCollection > phiSymHBHERecHitCollection( new HBHERecHitCollection );
-  std::auto_ptr< HORecHitCollection > phiSymHORecHitCollection( new HORecHitCollection );
-  std::auto_ptr< HFRecHitCollection > phiSymHFRecHitCollection( new HFRecHitCollection );
 
-  //Select interesting HBHERecHits 
+  //Create empty output collections
+  std::unique_ptr< HBHERecHitCollection > phiSymHBHERecHitCollection( new HBHERecHitCollection );
+  std::unique_ptr< HORecHitCollection > phiSymHORecHitCollection( new HORecHitCollection );
+  std::unique_ptr< HFRecHitCollection > phiSymHFRecHitCollection( new HFRecHitCollection );
+
+  //Select interesting HBHERecHits
   for (HBHERecHitCollection::const_iterator it=HBHERecHitsH->begin(); it!=HBHERecHitsH->end(); it++) {
     if (it->energy()>eCut_HB_&&it->id().subdet()==1) {
         phiSymHBHERecHitCollection->push_back(*it);
@@ -74,7 +74,7 @@ HLTHcalPhiSymFilter::hltFilter(edm::Event& iEvent, const edm::EventSetup& iSetup
     }
 
   }
-  
+
   //Select interesting HORecHits
   for (HORecHitCollection::const_iterator it=HORecHitsH->begin(); it!=HORecHitsH->end(); it++) {
     if (it->energy()>eCut_HO_&&it->id().subdet()==3) {
@@ -92,9 +92,9 @@ HLTHcalPhiSymFilter::hltFilter(edm::Event& iEvent, const edm::EventSetup& iSetup
   if ((!phiSymHBHERecHitCollection->size() ) && (!phiSymHORecHitCollection->size()) && (!phiSymHFRecHitCollection->size())) return false;
 
   //Put selected information in the event
-  if (phiSymHBHERecHitCollection->size()>0) iEvent.put( phiSymHBHERecHitCollection, phiSymHBHEHits_);
-  if (phiSymHORecHitCollection->size()>0) iEvent.put( phiSymHORecHitCollection, phiSymHOHits_);
-  if (phiSymHFRecHitCollection->size()>0) iEvent.put( phiSymHFRecHitCollection, phiSymHFHits_);
-  
+  if (phiSymHBHERecHitCollection->size()>0) iEvent.put(std::move(phiSymHBHERecHitCollection), phiSymHBHEHits_);
+  if (phiSymHORecHitCollection->size()>0) iEvent.put(std::move(phiSymHORecHitCollection), phiSymHOHits_);
+  if (phiSymHFRecHitCollection->size()>0) iEvent.put(std::move(phiSymHFRecHitCollection), phiSymHFHits_);
+
   return true;
 }

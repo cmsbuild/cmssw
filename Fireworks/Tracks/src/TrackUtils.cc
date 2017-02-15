@@ -18,6 +18,8 @@
 #include "Fireworks/Core/interface/TEveElementIter.h"
 #include "Fireworks/Core/interface/fwLog.h"
 
+#include "DataFormats/Common/interface/Handle.h"
+
 #include "DataFormats/TrackReco/interface/Track.h"
 
 #include "DataFormats/GsfTrackReco/interface/GsfTrack.h"
@@ -42,6 +44,8 @@
 #include "DataFormats/MuonDetId/interface/DTChamberId.h"
 #include "DataFormats/MuonDetId/interface/CSCDetId.h"
 #include "DataFormats/MuonDetId/interface/RPCDetId.h"
+#include "DataFormats/MuonDetId/interface/GEMDetId.h"
+#include "DataFormats/MuonDetId/interface/ME0DetId.h"
 
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EcalDetId/interface/EEDetId.h"
@@ -51,6 +55,8 @@
 
 #include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
 #include "DataFormats/HcalDetId/interface/HcalDetId.h"
+
+#include "FWCore/Common/interface/EventBase.h"
 
 namespace fireworks {
 
@@ -363,18 +369,7 @@ const SiStripCluster* extractClusterFromTrackingRecHit( const TrackingRecHit* re
    {     
       fwLog( fwlog::kDebug ) << "hit 2D ";
       
-      if( hit2D->cluster().isNonnull())
-      {
 	 cluster = hit2D->cluster().get();
-      }
-      else if( hit2D->cluster_regional().isNonnull())
-      {
-	 cluster = hit2D->cluster_regional().get();
-      }
-      else
-      {
-	 fwLog( fwlog::kDebug ) << "no cluster found!\n";
-      }
    }
    if( cluster == 0 )
    {
@@ -382,18 +377,7 @@ const SiStripCluster* extractClusterFromTrackingRecHit( const TrackingRecHit* re
      {
         fwLog( fwlog::kDebug ) << "hit 1D ";
 
-	if( hit1D->cluster().isNonnull())
-	{
 	   cluster = hit1D->cluster().get();
-	}
-	else if( hit1D->cluster_regional().isNonnull())
-	{
-	   cluster = hit1D->cluster_regional().get();
-	}
-	else
-	{
-	   fwLog( fwlog::kDebug ) << "no cluster found!\n";
-	}
      }
    }
    return cluster;
@@ -415,7 +399,9 @@ addSiStripClusters( const FWEventItem* iItem, const reco::Track &t, class TEveEl
             const SiStripRecHit2D &hit = static_cast<const SiStripRecHit2D &>( **it );
             if( hit.cluster().isNonnull() && hit.cluster().isAvailable())
 	    {
-               allClusters = hit.cluster().product();
+               edm::Handle<edmNew::DetSetVector<SiStripCluster> > allClustersHandle;
+               iItem->getEvent()->get(hit.cluster().id(), allClustersHandle);
+               allClusters = allClustersHandle.product();
                break;
             }
          }
@@ -424,7 +410,9 @@ addSiStripClusters( const FWEventItem* iItem, const reco::Track &t, class TEveEl
             const SiStripRecHit1D &hit = static_cast<const SiStripRecHit1D &>( **it );
             if( hit.cluster().isNonnull() && hit.cluster().isAvailable())
 	    {
-               allClusters = hit.cluster().product();
+               edm::Handle<edmNew::DetSetVector<SiStripCluster> > allClustersHandle;
+               iItem->getEvent()->get(hit.cluster().id(), allClustersHandle);
+               allClusters = allClustersHandle.product();
                break;
             }
          }
@@ -446,7 +434,7 @@ addSiStripClusters( const FWEventItem* iItem, const reco::Track &t, class TEveEl
       const float* pars = geom->getParameters( rawid );
       
       // -- get phi from SiStripHit
-      TrackingRecHitRef rechitRef = *it;
+      auto rechitRef = *it;
       const TrackingRecHit *rechit = &( *rechitRef );
       const SiStripCluster *cluster = extractClusterFromTrackingRecHit( rechit );
 
@@ -572,8 +560,10 @@ pushNearbyPixelHits( std::vector<TVector3> &pixelPoints, const FWEventItem &iIte
          const SiPixelRecHit &hit = static_cast<const SiPixelRecHit &>(**it);
          if( hit.cluster().isNonnull() && hit.cluster().isAvailable())
 	 {
-	    allClusters = hit.cluster().product();
-	    break;
+            edm::Handle<edmNew::DetSetVector<SiPixelCluster> > allClustersHandle;
+            iItem.getEvent()->get(hit.cluster().id(), allClustersHandle);
+            allClusters = allClustersHandle.product();
+            break;
 	 }
       }
    }
@@ -796,6 +786,26 @@ info(const DetId& id) {
                          << detId.roll();
                      break;
 	       }
+	    }
+	    break;
+            case MuonSubdetId::GEM:
+	    {
+	       GEMDetId detId(id.rawId());
+	       oss << "GEM chamber (region, station, ring, chamber, layer): "
+		   << detId.region() << ", "
+		   << detId.station() << ", "
+		   << detId.ring() << ", "
+		   << detId.chamber() << ", "
+		   << detId.layer();
+	    }
+	    break;
+            case MuonSubdetId::ME0:
+	    {
+	       ME0DetId detId(id.rawId());
+	       oss << "ME0 chamber (region, chamber, layer): "
+		   << detId.region() << ", "
+		   << detId.chamber() << ", "
+		   << detId.layer();
 	    }
 	    break;
 	 }

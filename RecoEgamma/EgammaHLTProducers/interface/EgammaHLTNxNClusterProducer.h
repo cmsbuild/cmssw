@@ -1,7 +1,6 @@
 #ifndef RecoEcal_EgammaClusterProducers_EgammaHLTNxNClusterProducer_h_
 #define RecoEcal_EgammaClusterProducers_EgammaHLTNxNClusterProducer_h_
 
-
 /**
 
 Description: simple NxN ( 3x3 etc) clustering ,( for low energy photon reconstrution, currently used for pi0/eta HLT path) 
@@ -10,116 +9,79 @@ Description: simple NxN ( 3x3 etc) clustering ,( for low energy photon reconstru
      <Notes on implementation>
 */
 
-
-
-
-#include <memory>
-#include <time.h>
-
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
-
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
+#include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "RecoEcal/EgammaCoreTools/interface/PositionCalc.h"
-#include "Geometry/CaloTopology/interface/CaloSubdetectorTopology.h"
-
-//
-#include "Geometry/EcalMapping/interface/EcalElectronicsMapping.h"
-#include "DataFormats/Math/interface/Point3D.h"
 #include "DataFormats/CaloRecHit/interface/CaloID.h"
 
-//Ecal status
 #include "CondFormats/DataRecord/interface/EcalChannelStatusRcd.h"
 #include "CondFormats/EcalObjects/interface/EcalChannelStatus.h"
 
-#include "TVector3.h"
 #include <vector>
+#include <memory>
+#include <time.h>
 
 
+namespace edm {
+  class ConfigurationDescriptions;
+}
 
 // Less than operator for sorting EcalRecHits according to energy.
 class ecalRecHitSort : public std::binary_function<EcalRecHit, EcalRecHit, bool> 
 {
  public:
   bool operator()(EcalRecHit x, EcalRecHit y) 
-    { 
-      return (x.energy() > y.energy()); 
-    }
+  { 
+    return (x.energy() > y.energy()); 
+  }
 };
 
 
+class EgammaHLTNxNClusterProducer : public edm::stream::EDProducer<> {
+ public:
 
+  EgammaHLTNxNClusterProducer(const edm::ParameterSet& ps);
+  ~EgammaHLTNxNClusterProducer();
+  
+  void produce(edm::Event&, const edm::EventSetup&) override ;
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
-class EgammaHLTNxNClusterProducer : public edm::EDProducer 
-{
-  public:
+ private:
+  
+  void makeNxNClusters(edm::Event &evt, const edm::EventSetup &es,const EcalRecHitCollection *hits, const reco::CaloID::Detectors detector); 
+  
+  bool checkStatusOfEcalRecHit(const EcalChannelStatus &channelStatus, const EcalRecHit &rh);
+        
+  //std::map<std::string,double> providedParameters;
+      
+  const bool doBarrel_;
+  const bool doEndcaps_;  
+  const edm::EDGetTokenT<EcalRecHitCollection> barrelHitProducer_;
+  const edm::EDGetTokenT<EcalRecHitCollection> endcapHitProducer_;
+  const int clusEtaSize_ ;
+  const int clusPhiSize_;
+  const std::string barrelClusterCollection_;
+  const std::string endcapClusterCollection_;
+  const double clusSeedThr_;
+  const double clusSeedThrEndCap_;
 
-      EgammaHLTNxNClusterProducer(const edm::ParameterSet& ps);
+  const bool useRecoFlag_; 
+  const int flagLevelRecHitsToUse_; 
+  const bool useDBStatus_; 
+  const int statusLevelRecHitsToUse_;
 
-      ~EgammaHLTNxNClusterProducer();
-      
-     
-      
-      virtual void produce(edm::Event&, const edm::EventSetup&);
-      
-   private:
-      
-      void makeNxNClusters(edm::Event &evt, const edm::EventSetup &es,const EcalRecHitCollection *hits, const reco::CaloID::Detectors detector); 
-      
-      bool checkStatusOfEcalRecHit(const EcalChannelStatus &channelStatus, const EcalRecHit &rh);
-      
-      
-      std::string barrelClusterCollection_;
-      std::string endcapClusterCollection_;
-      
+  const int maxNumberofSeeds_ ; 
+  const int maxNumberofClusters_; 
 
-      std::string barrelHits_;
-      std::string endcapHits_;
-      
-      
-      
-      PositionCalc posCalculator_; // position calculation algorithm
-      
-      
+  const int debug_; 
 
-      std::map<std::string,double> providedParameters;
-      
-      
-   
-      edm::InputTag barrelHitProducer_;
-      edm::InputTag endcapHitProducer_;
-      
-      
-      double clusSeedThr_;
-      double clusSeedThrEndCap_;
-      
-      bool doBarrel_;
-      bool doEndcaps_;
-      
-      
-      bool useRecoFlag_; 
-      bool useDBStatus_; 
-      int flagLevelRecHitsToUse_; 
-      int statusLevelRecHitsToUse_;
-
-      int clusEtaSize_ ;
-      int clusPhiSize_;
-      
-      
-      int debug_; 
-      
-      
-      int maxNumberofSeeds_ ; 
-      int maxNumberofClusters_; 
-      
-
-
-      
+  PositionCalc posCalculator_; // position calculation algorithm
 };
-
-
 #endif

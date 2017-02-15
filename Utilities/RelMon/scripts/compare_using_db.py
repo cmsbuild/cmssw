@@ -3,9 +3,6 @@
 # RelMon: a tool for automatic Release Comparison                              
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/RelMon
 #
-# $Author: dpiparo $
-# $Date: 2012/06/12 12:25:27 $
-# $Revision: 1.1 $
 #
 #                                                                              
 # Danilo Piparo CERN - danilo.piparo@cern.ch                                   
@@ -148,7 +145,7 @@ parser.add_option("-B","--black_list",
 original_pickle_name=""
 if options.compare:
 
-  if os.environ.has_key("RELMON_SA"):
+  if "RELMON_SA" in os.environ:
     from dqm_interfaces import DirID,DQMcommunicator,DirWalkerDB
     from dirstructure import Directory
   else:  
@@ -238,7 +235,7 @@ if options.compare:
 
 #-------------------------------------------------------------------------------
 if options.report:
-  if os.environ.has_key("RELMON_SA"):  
+  if "RELMON_SA" in os.environ:  
     from directories2html import directory2html
     from dirstructure import Directory
   else:

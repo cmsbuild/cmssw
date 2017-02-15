@@ -7,14 +7,17 @@
 */  
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
+#include <DataFormats/VertexReco/interface/VertexFwd.h>
+#include <DataFormats/ParticleFlowCandidate/interface/PFCandidateFwd.h>
+
 namespace reco
 {
-  class ParticleFlowForChargedMETProducer : public edm::EDProducer {
+  class ParticleFlowForChargedMETProducer : public edm::stream::EDProducer<> {
     
   public:
     explicit ParticleFlowForChargedMETProducer(const edm::ParameterSet&);
@@ -26,6 +29,9 @@ namespace reco
     
     edm::InputTag pfCollectionLabel;
     edm::InputTag pvCollectionLabel;
+
+    edm::EDGetTokenT<VertexCollection> pvCollectionToken;
+    edm::EDGetTokenT<PFCandidateCollection> pfCandidatesToken;
 
     double dzCut;
     double neutralEtThreshold;

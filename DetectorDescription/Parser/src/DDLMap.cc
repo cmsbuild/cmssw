@@ -1,27 +1,19 @@
-/***************************************************************************
-                          DDLMap.cc  -  description
-                             -------------------
-    begin                : Friday Nov. 21, 2003
-    email                : case@ucdhep.ucdavis.edu
- ***************************************************************************/
-
-// Boost parser, spirit, for parsing the std::vector elements.
-
 #include "DetectorDescription/Parser/src/DDLMap.h"
 
-#include "DetectorDescription/Base/interface/DDdebug.h"
-#include "DetectorDescription/ExprAlgo/interface/ExprEvalSingleton.h"
+#include <stddef.h>
+#include <utility>
+
+#include "DetectorDescription/ExprAlgo/interface/ClhepEvaluator.h"
+#include "DetectorDescription/Parser/interface/DDLElementRegistry.h"
+
+class DDCompactView;
 
 using namespace boost::spirit::classic;
 
-//  The "real" DDLMap members.
 DDLMap::DDLMap( DDLElementRegistry* myreg )
   : DDXMLElement( myreg )
 {}
 
-DDLMap::~DDLMap( void )
-{}
- 
 template <typename ScannerT> struct Mapper::definition
 {
   definition(Mapper const& self)
@@ -85,8 +77,6 @@ DDLMap::preProcessElement( const std::string& name, const std::string& nmspace, 
 void
 DDLMap::processElement( const std::string& name, const std::string& nmspace, DDCompactView& cpv )
 {
-  DCOUT_V('P', "DDLMap::processElement started");
-
   std::string tTextToParse = getText();
   DDXMLAttribute atts = getAttributeSet();
   std::string tName = atts.find("name")->second;
@@ -130,13 +120,11 @@ DDLMap::processElement( const std::string& name, const std::string& nmspace, DDC
 
   std::string nEntries = atts.find("nEntries")->second;
   if (pMap.size() != 
-      size_t(ExprEvalSingleton::instance().eval(pNameSpace, nEntries)))
+      size_t(myRegistry_->evaluator().eval(pNameSpace, nEntries)))
   {
     errorOut("Number of entries found in Map text does not match number in attribute nEntries.");
   }
   clear();
-  
-  DCOUT_V('P', "DDLMap::processElement completed");
 }
 
 void
@@ -155,7 +143,7 @@ void
 DDLMap::do_makeDouble( char const* str, char const* end )
 {
   std::string ts(str, end);
-  pDouble = ExprEvalSingleton::instance().eval(pNameSpace, ts);
+  pDouble = myRegistry_->evaluator().eval(pNameSpace, ts);
 }
 
 void

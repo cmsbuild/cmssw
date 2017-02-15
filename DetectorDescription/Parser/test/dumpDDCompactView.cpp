@@ -15,31 +15,33 @@
  *                                                                         *
  ***************************************************************************/
 
-
-#include <iostream>
-#include <stdlib.h>
+#include <exception>
 #include <fstream>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "DetectorDescription/Parser/interface/DDLParser.h"
-#include "FWCore/PluginManager/interface/ProblemTracker.h"
-#include "FWCore/PluginManager/interface/PresenceFactory.h"
-#include "FWCore/PythonParameterSet/interface/MakeParameterSets.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
-
-#include "DetectorDescription/Parser/interface/FIPConfiguration.h"
+#include "DetectorDescription/Core/interface/DDCompactView.h"
+#include "DetectorDescription/Core/interface/DDLogicalPart.h"
+#include "DetectorDescription/Core/interface/DDName.h"
+#include "DetectorDescription/Core/interface/DDPosData.h"
 #include "DetectorDescription/Core/src/DDCheck.h"
 #include "DetectorDescription/Core/src/DDCheckMaterials.cc"
-#include "DetectorDescription/Core/interface/DDCompactView.h"
-#include "DetectorDescription/Core/interface/adjgraph.h"
 #include "DetectorDescription/Core/src/Material.h"
+#include "DetectorDescription/Parser/interface/DDLParser.h"
+#include "DetectorDescription/Parser/interface/FIPConfiguration.h"
+#include "FWCore/PluginManager/interface/PresenceFactory.h"
+#include "FWCore/PluginManager/interface/ProblemTracker.h"
+#include "FWCore/ServiceRegistry/interface/ServiceRegistry.h"
+#include "FWCore/ServiceRegistry/interface/ServiceToken.h"
+#include "FWCore/Utilities/interface/Exception.h"
+#include "FWCore/Utilities/interface/Presence.h"
+#include "boost/smart_ptr/shared_ptr.hpp"
 
 int main(int argc, char *argv[])
 {
   typedef DDCompactView::graph_type::const_adj_iterator adjl_iterator;
-
-  std::cout << "main:: initialize" << std::endl;
-
-  //  AlgoInit();
 
   // Copied from example stand-alone program in Message Logger July 18, 2007
   std::string const kProgramName = argv[0];

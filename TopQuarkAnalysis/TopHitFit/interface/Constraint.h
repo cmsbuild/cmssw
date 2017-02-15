@@ -1,5 +1,4 @@
 //
-// $Id: Constraint.h,v 1.4 2009/11/17 13:37:51 haryo Exp $
 //
 // File: hitfit/private/Constraint.h
 // Purpose: Represent a mass constraint equation.
@@ -153,12 +152,12 @@ private:
   /**
      Left hand side of the constraint.
    */
-  std::auto_ptr<Constraint_Intermed> _lhs;
+  std::unique_ptr<Constraint_Intermed> _lhs;
 
   /**
      Right hand side of the constraint.
    */
-  std::auto_ptr<Constraint_Intermed> _rhs;
+  std::unique_ptr<Constraint_Intermed> _rhs;
 };
 
 

@@ -10,8 +10,6 @@
  *  Rods consist of one or more slabs (MagBSlab); each one consisting of one 
  *  or, in few cases, several volumes with the same lenght in Z.
  *
- *  $Date: 2005/09/06 15:49:29 $
- *  $Revision: 1.1 $
  *  \author N. Amapane - INFN Torino
  */
 
@@ -34,7 +32,7 @@ public:
   virtual ~MagBLayer();
 
   /// Find the volume containing a point, with a given tolerance
-  MagVolume * findVolume(const GlobalPoint & gp, double tolerance) const;
+  const MagVolume * findVolume(const GlobalPoint & gp, double tolerance) const;
   
   /// Lowest radius of the layer
   double minR() const {return theRMin;}

@@ -1,6 +1,4 @@
 /*
- *  $Date: 2009/02/19 21:52:40 $
- *  $Revision: 1.4 $
  *  \author Jean-Roch Vlimant
  */
 
@@ -13,10 +11,11 @@
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "FWCore/Utilities/interface/RandomNumberGenerator.h"
 
-// #include "FWCore/Utilities/interface/Exception.h"
-
-// #include "CLHEP/Random/RandExpo.h"
+#include "CLHEP/Random/RandExponential.h"
+#include "CLHEP/Random/RandFlat.h"
 
 using namespace edm;
 using namespace std;
@@ -35,12 +34,8 @@ ExpoRandomPtGunProducer::ExpoRandomPtGunProducer(const ParameterSet& pset) :
 
    fMeanPt = pgun_params.getParameter<double>("MeanPt");
 
-   produces<HepMCProduct>();
+   produces<HepMCProduct>("unsmeared");
    produces<GenEventInfoProduct>();
-
-   //the explonential generator
-   fRandomExpoGenerator = new CLHEP::RandExponential(fRandomEngine,fMeanPt);
-   
 }
 
 ExpoRandomPtGunProducer::~ExpoRandomPtGunProducer()
@@ -50,6 +45,8 @@ ExpoRandomPtGunProducer::~ExpoRandomPtGunProducer()
 
 void ExpoRandomPtGunProducer::produce(Event &e, const EventSetup& es) 
 {
+   edm::Service<edm::RandomNumberGenerator> rng;
+   CLHEP::HepRandomEngine* engine = &rng->getEngine(e.streamID());
 
    if ( fVerbosity > 0 )
    {
@@ -80,13 +77,13 @@ void ExpoRandomPtGunProducer::produce(Event &e, const EventSetup& es)
      //the max is to ensure you don't generate at 0
      //the 90% is to get rid of edge effect
      
-     double pt     =  std::max(0.00001,0.90*fMinPt)+fRandomExpoGenerator->fire(fMeanPt);
+     double pt     =  std::max(0.00001,0.90*fMinPt)+CLHEP::RandExponential::shoot(engine, fMeanPt);
      //shoot until in the designated range
      while (pt<fMinPt || pt>fMaxPt)
-       {pt = std::max(0.00001,0.90*fMinPt) + fRandomExpoGenerator->fire(fMeanPt);}
+       {pt = std::max(0.00001,0.90*fMinPt) + CLHEP::RandExponential::shoot(engine, fMeanPt);}
      
-     double eta    = fRandomGenerator->fire(fMinEta, fMaxEta) ;
-       double phi    = fRandomGenerator->fire(fMinPhi, fMaxPhi) ;
+       double eta    = CLHEP::RandFlat::shoot(engine, fMinEta, fMaxEta) ;
+       double phi    = CLHEP::RandFlat::shoot(engine, fMinPhi, fMaxPhi) ;
        int PartID = fPartIDs[ip] ;
        const HepPDT::ParticleData* 
           PData = fPDGTable->particle(HepPDT::ParticleID(abs(PartID))) ;
@@ -137,12 +134,12 @@ void ExpoRandomPtGunProducer::produce(Event &e, const EventSetup& es)
       fEvt->print() ;  
    }
 
-   auto_ptr<HepMCProduct> BProduct(new HepMCProduct()) ;
+   unique_ptr<HepMCProduct> BProduct(new HepMCProduct()) ;
    BProduct->addHepMCData( fEvt );
-   e.put(BProduct);
+   e.put(std::move(BProduct), "unsmeared");
 
-   auto_ptr<GenEventInfoProduct> genEventInfo(new GenEventInfoProduct(fEvt));
-   e.put(genEventInfo);
+   unique_ptr<GenEventInfoProduct> genEventInfo(new GenEventInfoProduct(fEvt));
+   e.put(std::move(genEventInfo));
     
    if ( fVerbosity > 0 )
    {

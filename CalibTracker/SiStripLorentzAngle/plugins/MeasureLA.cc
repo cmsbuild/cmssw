@@ -45,9 +45,9 @@ MeasureLA::MeasureLA(const edm::ParameterSet& conf) :
 }
 
 
-boost::shared_ptr<SiStripLorentzAngle> MeasureLA::
+std::shared_ptr<SiStripLorentzAngle> MeasureLA::
 produce(const SiStripLorentzAngleRcd& ) {
-  boost::shared_ptr<SiStripLorentzAngle> lorentzAngle(new SiStripLorentzAngle());
+  auto lorentzAngle = std::make_shared<SiStripLorentzAngle>();
   /*
   std::map<uint32_t,LA_Filler_Fitter::Result> 
     module_results = LA_Filler_Fitter::module_results(book, LA_Filler_Fitter::SQRTVAR);
@@ -117,7 +117,7 @@ void MeasureLA::
 write_report_text(std::string name, const LA_Filler_Fitter::Method& _method, const std::map<T,LA_Filler_Fitter::Result>& _results) const {
   LA_Filler_Fitter::Method method = _method;
   std::map<T,LA_Filler_Fitter::Result>results = _results;
-  fstream file((name+".dat").c_str(),std::ios::out);
+  std::fstream file((name+".dat").c_str(),std::ios::out);
   std::pair<T,LA_Filler_Fitter::Result> result;
   BOOST_FOREACH(result, results) {
     calibrate( calibration_key(result.first,method), result.second); 
@@ -128,7 +128,7 @@ write_report_text(std::string name, const LA_Filler_Fitter::Method& _method, con
 
 void MeasureLA::
 write_report_text_ms(std::string name, LA_Filler_Fitter::Method method) const {
-  fstream file((name+".dat").c_str(),std::ios::out);
+  std::fstream file((name+".dat").c_str(),std::ios::out);
   const std::string key = ".*"+granularity(MODULESUMMARY)+LA_Filler_Fitter::method(method);
   for(Book::const_iterator it = book.begin(key); it!=book.end(); ++it) {
     const TF1*const f = it->second->GetFunction("gaus");

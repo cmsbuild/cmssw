@@ -1,14 +1,17 @@
-#include "DetectorDescription/Base/interface/DDdebug.h"
+#include <ostream>
+#include <string>
+#include <vector>
+
 #include "CLHEP/Units/GlobalSystemOfUnits.h"
+#include "CLHEP/Units/SystemOfUnits.h"
+#include "DetectorDescription/Base/interface/Store.h"
+#include "DetectorDescription/Core/interface/DDBase.h"
 #include "DetectorDescription/Core/interface/DDMaterial.h"
+#include "DetectorDescription/Core/interface/DDName.h"
 #include "DetectorDescription/Core/src/Material.h"
+#include "FWCore/Utilities/interface/Exception.h"
 
 using DDI::Material;
-
-
-//DDBase<DDName,Material*>::StoreT::pointer_type 
-//  DDBase<DDName,Material*>::StoreT::instance_ = 0;
-
 
 DDMaterial::DDMaterial() : DDBase<DDName,Material*>() { }
 
@@ -75,7 +78,6 @@ int DDMaterial::addMaterial(const DDMaterial & m, double fm)
     throw cms::Exception("DDException") << "DDMaterial::addMaterial(..): name-clash\n        trying to add material " << m << " to itself! ";
   }  
   rep().addMaterial(m,fm);
-  DCOUT('c', std::string(" -> ADDED MATERIAL=") + m.toString() );
   return rep().noOfConstituents();
 }
 
@@ -88,8 +90,6 @@ int DDMaterial::noOfConstituents() const
 
 DDMaterial::FractionV::value_type DDMaterial::constituent(int i) const 
 { 
-  //const DDMaterialImpl::Fraction & f(rep().constituent(i));
-  //return std::make_pair(DDMaterial(f.first,true), f.second);  
   return rep().constituent(i);
 }
 
@@ -111,37 +111,31 @@ double DDMaterial::density() const
   return rep().density(); 
 }
 
-// void DDMaterial::clear()
-// {
-//   StoreT::instance().clear();
-// }
-// private ctor for internal use
-//DDMaterial::DDMaterial(DDRedirect<DDMaterialImpl>* p, bool dummy)
-// : DDRegistered<DDMaterialImpl>(p,true)
-//{ 
-//  DCOUT_V('C',"DC: (redir) init=" << rep_ ); 
-//}   
-
+namespace {
+  std::ostream &doStream(std::ostream & os, const DDMaterial & mat, int level)
+  {
+    ++level; 
+    if (mat) {
+      os << '[' << mat.name() <<']' << " z=" << mat.z()
+                       << " a=" << mat.a()/g*mole << "*g/mole"
+                       << " d=" << mat.density()/g*cm3 << "*g/cm3";
+      std::string s(2*level,' ');
+      for (int i=0; i<mat.noOfConstituents(); ++i) {
+         DDMaterial::FractionV::value_type f = mat.constituent(i);
+         os << std::endl << s << i+1 << " : fm=" << f.second
+                    << " : ";
+         doStream(os, f.first, level);
+      }
+    }
+    else
+      os << "* material not declared * ";
+    --level;
+    return os;
+  }
+}
 
 std::ostream & operator<<(std::ostream & os, const DDMaterial & mat)
 { 
-  static int level=0;
-  ++level; 
-  if (mat) {
-    os << '[' << mat.name() <<']' << " z=" << mat.z() 
-                     << " a=" << mat.a()/g*mole << "*g/mole" 
-		     << " d=" << mat.density()/g*cm3 << "*g/cm3";
-    std::string s(2*level,' ');		     
-    for (int i=0; i<mat.noOfConstituents(); ++i) {
-       DDMaterial::FractionV::value_type f = mat.constituent(i);
-       os << std::endl << s << i+1 << " : fm=" << f.second 
-                  << " : " << f.first;
-    } 		     
-    //--level;
-  } 
-  else
-    os << "* material not declared * ";  
-  --level;   
-  return os;
+  return doStream(os, mat, 0);
 }
 

@@ -1,8 +1,12 @@
 
 #include "CaloOnlineTools/HcalOnlineDb/interface/ConfigurationDatabaseImplOracle.hh"
+#include <iostream>  // std::cout
 
-#include "xgi/Utils.h"
-#include "toolbox/string.h"
+#ifdef HAVE_XDAQ
+#include <toolbox/string.h>
+#else
+#include "CaloOnlineTools/HcalOnlineDb/interface/xdaq_compat.h"  // Replaces toolbox::toString
+#endif
 
 using namespace std;
 using namespace oracle::occi;
@@ -26,17 +30,17 @@ ConfigurationDatabaseImplOracle::~ConfigurationDatabaseImplOracle() {
 
 }
 
-void ConfigurationDatabaseImplOracle::connect(const std::string& accessor) throw (hcal::exception::ConfigurationDatabaseException) {
+void ConfigurationDatabaseImplOracle::connect(const std::string& accessor) noexcept(false) {
   std::map<std::string,std::string> params;
   std::string user, host, method, db, port,password;
   ConfigurationDatabaseImpl::parseAccessor(accessor,method,host,port,user,db,params);
-  
+
   if (method!="occi") XCEPT_RAISE(hcal::exception::ConfigurationDatabaseException,std::string("Invalid accessor for Oracle : ")+accessor);
-    
+
   if (params.find("PASSWORD")!=params.end()) password=params["PASSWORD"];
   if (params.find("LHWM_VERSION")!=params.end()) lhwm_version=params["LHWM_VERSION"];
 
-  try {    
+  try {
      env_ = oracle::occi::Environment::createEnvironment (oracle::occi::Environment::DEFAULT);
      conn_ = env_->createConnection (user, password, db);
    } catch (SQLException& e) {
@@ -82,9 +86,9 @@ inline static int cvtChar(int c) {
   return c&0xF;
 }
 
-void ConfigurationDatabaseImplOracle::getLUTChecksums(const std::string& tag, 
-		std::map<hcal::ConfigurationDatabase::LUTId, 
-		hcal::ConfigurationDatabase::MD5Fingerprint>& checksums) throw (hcal::exception::ConfigurationDatabaseException) {
+void ConfigurationDatabaseImplOracle::getLUTChecksums(const std::string& tag,
+		std::map<hcal::ConfigurationDatabase::LUTId,
+		hcal::ConfigurationDatabase::MD5Fingerprint>& checksums) noexcept(false) {
 
 	if (env_ == NULL || conn_ == NULL) XCEPT_RAISE(hcal::exception::ConfigurationDatabaseException,"Database is not open");
   	checksums.clear();
@@ -105,13 +109,13 @@ void ConfigurationDatabaseImplOracle::getLUTChecksums(const std::string& tag,
                 std::string buffer = clobToString(clob);
 
                 m_parser.parseMultiple(buffer,items);
-		
+
                 for (std::list<ConfigurationDatabaseStandardXMLParser::Item>::iterator i=items.begin(); i!=items.end(); ++i) {
-	
-                        hcal::ConfigurationDatabase::FPGASelection ifpga = 
+
+                        hcal::ConfigurationDatabase::FPGASelection ifpga =
 				(hcal::ConfigurationDatabase::FPGASelection)atoi(i->parameters["topbottom"].c_str());
                         int islot = atoi(i->parameters["slot"].c_str());
-			hcal::ConfigurationDatabase::LUTType ilut_type = 
+			hcal::ConfigurationDatabase::LUTType ilut_type =
 				(hcal::ConfigurationDatabase::LUTType)atoi(i->parameters["luttype"].c_str());
 			int crate=atoi(i->parameters["crate"].c_str());
                         int islb=atoi(i->parameters["slb"].c_str());
@@ -137,7 +141,7 @@ void ConfigurationDatabaseImplOracle::getLUTChecksums(const std::string& tag,
 
 }
 
-void ConfigurationDatabaseImplOracle::getLUTs(const std::string& tag, int crate, int slot, std::map<hcal::ConfigurationDatabase::LUTId, hcal::ConfigurationDatabase::LUT >& LUTs) throw (hcal::exception::ConfigurationDatabaseException) {
+void ConfigurationDatabaseImplOracle::getLUTs(const std::string& tag, int crate, int slot, std::map<hcal::ConfigurationDatabase::LUTId, hcal::ConfigurationDatabase::LUT >& LUTs) noexcept(false) {
   if (m_lutCache.crate!=crate || m_lutCache.tag!=tag) {
     m_lutCache.clear();
     getLUTs_real(tag,crate,m_lutCache.luts);
@@ -154,9 +158,9 @@ void ConfigurationDatabaseImplOracle::getLUTs(const std::string& tag, int crate,
 }
 
 
-void ConfigurationDatabaseImplOracle::getLUTs_real(const std::string& tag, int crate,  
-			std::map<hcal::ConfigurationDatabase::LUTId, hcal::ConfigurationDatabase::LUT >& LUTs) 
-								throw (hcal::exception::ConfigurationDatabaseException)
+void ConfigurationDatabaseImplOracle::getLUTs_real(const std::string& tag, int crate,
+			std::map<hcal::ConfigurationDatabase::LUTId, hcal::ConfigurationDatabase::LUT >& LUTs)
+								noexcept(false)
 {
 
    try {
@@ -178,13 +182,13 @@ void ConfigurationDatabaseImplOracle::getLUTs_real(const std::string& tag, int c
 		m_parser.parseMultiple(buffer,items);
 
       		for (std::list<ConfigurationDatabaseStandardXMLParser::Item>::iterator i=items.begin(); i!=items.end(); ++i) {
-			hcal::ConfigurationDatabase::FPGASelection ifpga = 
+			hcal::ConfigurationDatabase::FPGASelection ifpga =
 					(hcal::ConfigurationDatabase::FPGASelection)atoi(i->parameters["TOPBOTTOM"].c_str());
 			int islot = atoi(i->parameters["SLOT"].c_str());
 
 			//If this is the desired slot
 			//if (islot == slot) {
-				hcal::ConfigurationDatabase::LUTType ilut_type = 
+				hcal::ConfigurationDatabase::LUTType ilut_type =
 						(hcal::ConfigurationDatabase::LUTType)atoi(i->parameters["LUT_TYPE"].c_str());
 				hcal::ConfigurationDatabase::LUTId lut_id;
         			if (ilut_type==hcal::ConfigurationDatabase::LinearizerLUT) {
@@ -205,11 +209,11 @@ void ConfigurationDatabaseImplOracle::getLUTs_real(const std::string& tag, int c
 				else if (i->encoding=="dec") strtol_base=10;
 
 				// convert the data
-				for (unsigned int j=0; j<i->items.size(); j++) 
+				for (unsigned int j=0; j<i->items.size(); j++)
 					lut.push_back(strtol(i->items[j].c_str(),0,strtol_base));
 
 				LUTs.insert(make_pair(lut_id, lut));
-			//}    
+			//}
     		}
 	}
 
@@ -221,7 +225,7 @@ void ConfigurationDatabaseImplOracle::getLUTs_real(const std::string& tag, int c
 
 }
 
-void ConfigurationDatabaseImplOracle::getPatterns(const std::string& tag, int crate, int slot, std::map<hcal::ConfigurationDatabase::PatternId, hcal::ConfigurationDatabase::HTRPattern >& patterns) throw (hcal::exception::ConfigurationDatabaseException) {
+void ConfigurationDatabaseImplOracle::getPatterns(const std::string& tag, int crate, int slot, std::map<hcal::ConfigurationDatabase::PatternId, hcal::ConfigurationDatabase::HTRPattern >& patterns) noexcept(false) {
   if (m_patternCache.crate!=crate || m_patternCache.tag!=tag) {
     m_patternCache.clear();
     getPatterns_real(tag,crate,m_patternCache.patterns);
@@ -237,9 +241,9 @@ void ConfigurationDatabaseImplOracle::getPatterns(const std::string& tag, int cr
   }
 }
 
-void ConfigurationDatabaseImplOracle::getPatterns_real(const std::string& tag, int crate,  
-			std::map<hcal::ConfigurationDatabase::PatternId, hcal::ConfigurationDatabase::HTRPattern >& patterns) 
-							throw (hcal::exception::ConfigurationDatabaseException) {
+void ConfigurationDatabaseImplOracle::getPatterns_real(const std::string& tag, int crate,
+			std::map<hcal::ConfigurationDatabase::PatternId, hcal::ConfigurationDatabase::HTRPattern >& patterns)
+							noexcept(false) {
    try {
         //Lets run the SQl Query
         Statement* stmt = conn_->createStatement();
@@ -293,7 +297,7 @@ void ConfigurationDatabaseImplOracle::getPatterns_real(const std::string& tag, i
 void ConfigurationDatabaseImplOracle::getRBXdata(const std::string& tag, const std::string& rbx,
                         hcal::ConfigurationDatabase::RBXdatumType dtype,
                         std::map<ConfigurationDatabase::RBXdatumId, hcal::ConfigurationDatabase::RBXdatum>& RBXdata)
-                        throw (hcal::exception::ConfigurationDatabaseException) {
+                        noexcept(false) {
 
         RBXdata.clear();
 
@@ -400,7 +404,7 @@ void ConfigurationDatabaseImplOracle::getRBXdata(const std::string& tag, const s
 
 void ConfigurationDatabaseImplOracle::getZSThresholds(const std::string& tag, int crate, int slot,
                 std::map<hcal::ConfigurationDatabase::ZSChannelId, int>& thresholds)
-                throw (hcal::exception::ConfigurationDatabaseException) {
+                noexcept(false) {
 
    try {
         //Lets run the SQl Query
@@ -443,26 +447,26 @@ void ConfigurationDatabaseImplOracle::getZSThresholds(const std::string& tag, in
 
 void ConfigurationDatabaseImplOracle::getHLXMasks(const std::string& tag, int crate, int slot,
                         std::map<hcal::ConfigurationDatabase::FPGAId, hcal::ConfigurationDatabase::HLXMasks>& masks)
-                                        throw (hcal::exception::ConfigurationDatabaseException) {
+                                        noexcept(false) {
   if (m_hlxMaskCache.crate!=crate || m_hlxMaskCache.tag!=tag) {
     m_hlxMaskCache.clear();
     getHLXMasks_real(tag,crate,m_hlxMaskCache.masks);
     m_hlxMaskCache.crate=crate;
     m_hlxMaskCache.tag=tag;
-  } 
-  
+  }
+
   masks.clear();
   std::map<ConfigurationDatabase::FPGAId, ConfigurationDatabase::HLXMasks>::const_iterator i;
   for (i=m_hlxMaskCache.masks.begin(); i!=m_hlxMaskCache.masks.end(); i++) {
     if (i->first.slot==slot)
       masks.insert(*i);
   }
-} 
+}
 
 
 void ConfigurationDatabaseImplOracle::getHLXMasks_real(const std::string& tag, int crate,
                 std::map<ConfigurationDatabase::FPGAId, ConfigurationDatabase::HLXMasks>& masks)
-                throw (hcal::exception::ConfigurationDatabaseException) {
+                noexcept(false) {
    try {
         //Lets run the SQl Query
         Statement* stmt = conn_->createStatement();

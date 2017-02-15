@@ -14,7 +14,7 @@
 
 // user include files
 #include "L1Trigger/RPCTrigger/interface/MuonsGrabber.h"
-#include <xercesc/util/PlatformUtils.hpp>
+#include "FWCore/Concurrency/interface/Xerces.h"
 #include <xercesc/util/XMLString.hpp>
 #include <xercesc/dom/DOM.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
@@ -71,7 +71,7 @@ MuonsGrabber::MuonsGrabber()
 {
 
     try {
-       XMLPlatformUtils::Initialize();
+       cms::concurrency::xercesInitialize();
     }
     catch(const XMLException &toCatch)  {
       throw std::string("Error during Xerces-c Initialization: "
@@ -104,27 +104,24 @@ MuonsGrabber::~MuonsGrabber()
   XMLCh tempStr[100];
   XMLString::transcode("LS", tempStr, 99);
   DOMImplementation *impl          = DOMImplementationRegistry::getDOMImplementation(tempStr);
-  DOMWriter         *theSerializer = ((DOMImplementationLS*)impl)->createDOMWriter();
-  
-  theSerializer->setEncoding(X("UTF-8"));
-
-  if (theSerializer->canSetFeature(XMLUni::fgDOMWRTFormatPrettyPrint, true))
-              theSerializer->setFeature(XMLUni::fgDOMWRTFormatPrettyPrint, true);
+  DOMLSSerializer   *theSerializer = ((DOMImplementationLS*)impl)->createLSSerializer();
+  DOMConfiguration  *dc = theSerializer->getDomConfig();
+  dc->setParameter(XMLUni::fgDOMWRTFormatPrettyPrint, true);
+  DOMLSOutput       *outputDesc = ((DOMImplementationLS*)impl)->createLSOutput();
+  outputDesc->setEncoding(X("UTF-8"));
 
   XMLFormatTarget *myFormTarget = new LocalFileFormatTarget(X("testpulses.xml"));
+  outputDesc->setByteStream(myFormTarget);
   DOMNode* xmlstylesheet  = m_doc->createProcessingInstruction(X("xml-stylesheet"),
                                      X("type=\"text/xsl\"href=\"default.xsl\""));
 
   m_doc->insertBefore(xmlstylesheet, m_rootElem);
-  theSerializer->writeNode(myFormTarget, *m_doc);
+  theSerializer->write(m_doc, outputDesc);
         
   delete theSerializer;
   delete myFormTarget;
   m_doc->release();
-      
-
-       
-
+  cms::concurrency::xercesTerminate();
 }
 
 void MuonsGrabber::startNewEvent(int event, int bx) {

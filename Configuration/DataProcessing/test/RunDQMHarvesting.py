@@ -22,32 +22,33 @@ class RunDQMHarvesting:
         self.run = None
         self.globalTag = 'UNSPECIFIED::All'
         self.inputLFN = None
+        self.dqmio = None
 
     def __call__(self):
         if self.scenario == None:
             msg = "No --scenario specified"
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
         if self.inputLFN == None:
             msg = "No --lfn specified"
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
         
         if self.run == None:
             msg = "No --run specified"
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
         
         if self.dataset == None:
             msg = "No --dataset specified"
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
         
 
         
         try:
             scenario = getScenario(self.scenario)
-        except Exception, ex:
+        except Exception as ex:
             msg = "Error getting Scenario implementation for %s\n" % (
                 self.scenario,)
             msg += str(ex)
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
 
         print "Retrieved Scenario: %s" % self.scenario
         print "Using Global Tag: %s" % self.globalTag
@@ -56,13 +57,17 @@ class RunDQMHarvesting:
         
         
         try:
+            kwds = {}
+            if not self.dqmio is None:
+                kwds['newDQMIO'] = self.dqmio
+
             process = scenario.dqmHarvesting(self.dataset, self.run,
-                                             self.globalTag)
+                                             self.globalTag, **kwds)
             
-        except Exception, ex:
+        except Exception as ex:
             msg = "Error creating Harvesting config:\n"
             msg += str(ex)
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
 
         process.source.fileNames.append(self.inputLFN)
 
@@ -78,11 +83,11 @@ class RunDQMHarvesting:
 
 if __name__ == '__main__':
     valid = ["scenario=", "run=", "dataset=",
-             "global-tag=", "lfn="]
+             "global-tag=", "lfn=", "dqmio"]
     usage = """RunDQMHarvesting.py <options>"""
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", valid)
-    except getopt.GetoptError, ex:
+    except getopt.GetoptError as ex:
         print usage
         print str(ex)
         sys.exit(1)
@@ -101,5 +106,7 @@ if __name__ == '__main__':
             harvester.run = arg
         if opt == "--dataset":
             harvester.dataset = arg
+        if opt == "--dqmio":
+            harvester.dqmio = True
 
     harvester()

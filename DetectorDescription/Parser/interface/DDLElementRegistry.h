@@ -1,25 +1,16 @@
 #ifndef DDL_ElementRegistry_H
 #define DDL_ElementRegistry_H
-// -------------------------------------------------------------------------
-// Includes
-// -------------------------------------------------------------------------
 
 #include <string>
 #include <map>
 
-#include <DetectorDescription/Base/interface/Singleton.h>
-#include <DetectorDescription/Base/interface/Singleton.icc>
-//#include <DetectorDescription/interface/DDXMLElement.h>
+#include "DetectorDescription/Base/interface/Singleton.h"
+#include "DetectorDescription/Base/interface/Singleton.icc"
 
 class DDXMLElement;
 
-// CLHEP Dependencies
 #include <CLHEP/Evaluator/Evaluator.h>
-
-// -------------------------------------------------------------------------
-// Class declaration
-// -------------------------------------------------------------------------
-
+#include "DetectorDescription/ExprAlgo/interface/ExprEvalSingleton.h"
 
 /// The main class for processing parsed elements.
 /** \class DDLElementRegistry
@@ -38,16 +29,14 @@ class DDXMLElement;
  *
  */
 
-class DDLElementRegistry //: public DDXMLElementRegistry
+class DDLElementRegistry
 {
 
  public:
   typedef std::map <std::string, DDXMLElement*> RegistryMap;
 
-  /// Constructor
   DDLElementRegistry();
 
-  /// Destructor
   ~DDLElementRegistry();
   
   /// This allows other Elements to register themselves with the static registry
@@ -63,6 +52,7 @@ class DDLElementRegistry //: public DDXMLElementRegistry
 
   /// Get the name given a pointer.  This may not be needed...
   const std::string& getElementName(DDXMLElement* theElement) const;
+  ClhepEvaluator &evaluator() { return ExprEvalSingleton::instance(); }
 
  private:
   RegistryMap registry_;

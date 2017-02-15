@@ -1,7 +1,5 @@
 /** \file
  *
- *  $Date: 2008/03/29 11:55:26 $
- *  $Revision: 1.3 $
  *  \author N. Amapane - CERN
  */
 
@@ -19,10 +17,9 @@ UniformMagneticFieldESProducer::UniformMagneticFieldESProducer(const edm::Parame
 }
 
 
-std::auto_ptr<MagneticField> UniformMagneticFieldESProducer::produce(const IdealMagneticFieldRecord & iRecord)
+std::unique_ptr<MagneticField> UniformMagneticFieldESProducer::produce(const IdealMagneticFieldRecord & iRecord)
 {
-  std::auto_ptr<MagneticField> s(new UniformMagneticField(value));
-  return s;
+  return std::make_unique<UniformMagneticField>(value);
 }
 
 DEFINE_FWK_EVENTSETUP_MODULE(UniformMagneticFieldESProducer);

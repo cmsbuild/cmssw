@@ -8,6 +8,7 @@
 //
 // Original Author:  Roberto Covarelli (CERN)
 //         Created:  Tue Jun 13 14:48:33 CEST 2006
+// $Id: EgammaHLTR9Producer.h,v 1.2 2010/06/10 16:19:31 ghezzi Exp $
 //         modified by Chris Tully (Princeton)
 //
 //
@@ -18,32 +19,35 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
-
+#include "FWCore/Framework/interface/global/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
-//
-// class declaration
-//
+#include "DataFormats/RecoCandidate/interface/RecoEcalCandidate.h"
+#include "DataFormats/RecoCandidate/interface/RecoEcalCandidateIsolation.h"
 
-class EgammaHLTR9IDProducer : public edm::EDProducer {
-   public:
-      explicit EgammaHLTR9IDProducer(const edm::ParameterSet&);
-      ~EgammaHLTR9IDProducer();
+#include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
 
+namespace edm {
+  class ConfigurationDescriptions;
+}
 
-      virtual void produce(edm::Event&, const edm::EventSetup&);
-   private:
-      // ----------member data ---------------------------
+class RecoEcalCandidateProducers;
 
-  edm::InputTag recoEcalCandidateProducer_;
-  edm::InputTag ecalRechitEBTag_;
-  edm::InputTag ecalRechitEETag_;
+class EgammaHLTR9IDProducer : public edm::global::EDProducer<> {
+public:
+  explicit EgammaHLTR9IDProducer(const edm::ParameterSet&);
+  ~EgammaHLTR9IDProducer();
   
-  edm::ParameterSet conf_;
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+  void produce(edm::StreamID sid, edm::Event&, const edm::EventSetup&) const override;
 
+private:
+  // ----------member data ---------------------------
+  
+  const edm::EDGetTokenT<reco::RecoEcalCandidateCollection> recoEcalCandidateProducer_;
+  const edm::EDGetTokenT<EcalRecHitCollection> ecalRechitEBToken_;
+  const edm::EDGetTokenT<EcalRecHitCollection> ecalRechitEEToken_;
 };
 

@@ -39,15 +39,8 @@
 
 // ELadministrator::setProcess( const ELstring & process )
 // ELadministrator::swapProcess( const ELstring & process )
-// ELadministrator::setContextSupplier( const ELcontextSupplier & supplier )
-// ELadministrator::getContextSupplier() const
-// ELadministrator::swapContextSupplier( ELcontextSupplier & supplier )
-// ELadministrator::setAbortThreshold( const ELseverityLevel & sev )
-// ELadministrator::setExitThreshold( const ELseverityLevel & sev )
 // ELadministrator::attach( const ELdestination & sink )
 // ELadministrator::attach( const ELdestination & sink, const ELstring & name )
-// ELadministrator::getELdestControl ( const ELstring & name,
-//                                      ELdestControl & theDestControl )
 // ELadministrator::checkSeverity()
 // ELadministrator::severityCount( const ELseverityLevel & sev ) const
 // ELadministrator::severityCount( const ELseverityLevel & from,
@@ -70,20 +63,18 @@
 // ELadministrator::context() const
 // ELadministrator::abortThreshold() const
 // ELadministrator::exitThreshold() const
-// ELadministrator::sinks()
+// ELadministrator::sinks_
 // ELadministrator::highSeverity() const
 // ELadministrator::severityCounts( const int lev ) const
 // ELadministrator::finishMsg()
 // ELadministrator::clearMsg()
 //
-// class ELemptyContextSupplier : public ELcontextSupplier
 //
 // ----------------------------------------------------------------------
 
 
 #include "FWCore/MessageService/interface/ELadministrator.h"
 #include "FWCore/MessageService/interface/ELdestination.h"
-#include "FWCore/MessageService/interface/ELcontextSupplier.h"
 #include "FWCore/MessageService/interface/ELoutput.h"
 
 #include "FWCore/Utilities/interface/EDMException.h"
@@ -102,91 +93,53 @@ namespace service {
 // #define ELadministratorCONSTRUCTOR_TRACE
 // #define ELadTRACE_FINISH
 
+  
+void ELadministrator::log(edm::ErrorObj & msg) {
+  
+  
+  // severity level statistics keeping:                 // $$ mf 6/7/01
+  int lev = msg.xid().severity.getLevel();
+  ++ severityCounts_[lev];
+  if ( lev > highSeverity_.getLevel() )
+    highSeverity_ = msg.xid().severity;
+  
+  // -----  send the message to each destination:
+  //
+  if (sinks_.begin() == sinks_.end())  {
+    std::cerr << "\nERROR LOGGED WITHOUT DESTINATION!\n";
+    std::cerr << "Attaching destination \"cerr\" to ELadministrator by default\n"
+    << std::endl;
+    attach(ELoutput(std::cerr));
+  }
+  for (auto& sink : sinks_)
+    if ( sink->log( msg )  )
+      msg.setReactedTo ( true );
+  
+  return;
+  
+}
+
 
 // ----------------------------------------------------------------------
 // ELadministrator functionality:
 // ----------------------------------------------------------------------
 
-void ELadministrator::setProcess( const ELstring & process )  {
-
-  process_ = process;
-  #if 0
-    std::cerr << "Administrator process set to \"" << process << "\"\n";
-  #endif
-
-}  // setProcess()
-
-
-ELstring ELadministrator::swapProcess( const ELstring & process )  {
-
-  ELstring temp = process_;
-  process_ = process;
-  return temp;
-
-} // swapProcess()
-
-
-void ELadministrator::setContextSupplier( const ELcontextSupplier & supplier )  {
-
-  context_.reset(supplier.clone());
-
-}  // setContextSupplier()
-
-
-const ELcontextSupplier & ELadministrator::getContextSupplier() const  {
-
-  return *(context_);
-
-}  // getContextSupplier()
-
-ELcontextSupplier & ELadministrator::swapContextSupplier
-                                        (ELcontextSupplier & cs)  {
-  ELcontextSupplier & save = *(context_);
-  context_.reset(&cs);
-  return save;
-} // swapContextSupplier
-
-
-void ELadministrator::setAbortThreshold( const ELseverityLevel & sev )  {
-
-  abortThreshold_ = sev;
-
-}  // setAbortThreshold()
-
-void ELadministrator::setExitThreshold( const ELseverityLevel & sev )  {
-
-  exitThreshold_ = sev;
-
-}  // setExitThreshold()
-
 ELdestControl ELadministrator::attach( const ELdestination & sink )  {
 
-  boost::shared_ptr<ELdestination> dest(sink.clone());
-  sinks().push_back( dest );
+  std::shared_ptr<ELdestination> dest(sink.clone());
+  sinks_.push_back( dest );
   return ELdestControl( dest );
 
 }  // attach()
 
 ELdestControl ELadministrator::attach(  const ELdestination & sink,
                                         const ELstring & name )     {
-  boost::shared_ptr<ELdestination> dest(sink.clone());
-  attachedDestinations[name] = dest;
-  sinks().push_back( dest );
+  std::shared_ptr<ELdestination> dest(sink.clone());
+  attachedDestinations_[name] = dest;
+  sinks_.push_back( dest );
   return ELdestControl( dest );
 } // attach()
 
-
-bool ELadministrator::getELdestControl ( const ELstring & name,
-                                         ELdestControl & theDestControl ) {
-
-  if ( attachedDestinations.find(name) != attachedDestinations.end() ) {
-    theDestControl = ELdestControl ( attachedDestinations[name] );
-    return true;
-  } else {
-    return false;
-  }
-
-} // getDestControl
 
 ELseverityLevel  ELadministrator::checkSeverity()  {
 
@@ -247,23 +200,6 @@ void ELadministrator::resetSeverityCount()  {
 // Accessors:
 // ----------------------------------------------------------------------
 
-const ELstring & ELadministrator::process() const  { return process_; }
-
-
-ELcontextSupplier & ELadministrator::context() const  { return *context_; }
-
-
-const ELseverityLevel & ELadministrator::abortThreshold() const  {
-  return abortThreshold_;
-}
-
-const ELseverityLevel & ELadministrator::exitThreshold() const  {
-  return exitThreshold_;
-}
-
-std::list<boost::shared_ptr<ELdestination> > & ELadministrator::sinks()  { return sinks_; }
-
-
 const ELseverityLevel & ELadministrator::highSeverity() const  {
   return highSeverity_;
 }
@@ -278,91 +214,6 @@ int ELadministrator::severityCounts( const int lev ) const  {
 // Message handling:
 // ----------------------------------------------------------------------
 
-static inline void msgexit(int s) {
-  std::ostringstream os;
-  os << "msgexit - MessageLogger requested to exit with status " << s;
-  edm::Exception e(edm::errors::LogicError, os.str());
-  throw e;
-}
-
-static inline void msgabort() {
-  std::ostringstream os;
-  os << "msgabort - MessageLogger requested to abort";
-  edm::Exception e(edm::errors::LogicError, os.str());
-  throw e;
-}
-
-static inline void possiblyAbortOrExit (int s, int a, int e) {
-  if (s < a && s < e) return;
-  if (a < e) {
-    if ( s < e ) msgabort();
-    msgexit(s);
-  } else {
-    if ( s < a ) msgexit(s);
-    msgabort();
-  }
-}
-
-void ELadministrator::finishMsg()  {
-
-  if ( ! msgIsActive )
-    return;
-
-  int lev = msg.xid().severity.getLevel();
-  ++ severityCounts_[lev];
-  if ( lev > highSeverity_.getLevel() )
-    highSeverity_ = msg.xid().severity;
-
-  #ifdef ELadTRACE_FINISH
-    std::cerr << "=:=:=: finshMsg() - lev = " << lev << "\n";
-  #endif
-
-  context_->editErrorObj( msg );
-
-  #ifdef ELadTRACE_FINISH
-    std::cerr << "=:=:=: finshMsg() returns from editErrorObj( msg ) \n";
-  #endif
-
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  bool mrt;
-  #ifdef ELadTRACE_FINISH
-    int destCounter = 0;
-  #endif
-  if ( sinks().begin() == sinks().end() )  {                   // $$ JV:1
-    std::cerr << "\nERROR LOGGED WITHOUT DESTINATION!\n";
-    std::cerr << "Attaching destination \"cerr\" to ELadministrator by default\n\n";
-    boost::shared_ptr<ELdestination> dest(new ELoutput(cerr));
-    this->sinks().push_back(dest);
-  }
-  for ( d = sinks().begin();  d != sinks().end();  ++d )  {
-    #ifdef ELadTRACE_FINISH
-      std::cerr << "  =:=:=: log(msg) for a destination number "
-           << ++destCounter << " called ... \n";
-    #endif
-    mrt = (*d)->log( msg );
-    #ifdef ELadTRACE_FINISH
-      std::cerr << "  =:=:=: log(msg) for a destination returned " << mrt << "\n";
-    #endif
-    if ( mrt )
-      msg.setReactedTo(true);
-  }
-
-  msgIsActive = false;
-
-  possiblyAbortOrExit ( lev,
-                        abortThreshold().getLevel(),
-                        exitThreshold().getLevel()   );         // $$ mf 3/17/04
-
-}  // finishMsg()
-
-
-void ELadministrator::clearMsg()  {
-
-  msgIsActive = false;
-  msg.clear();
-
-}  // clearMsg()
-
 
 // ----------------------------------------------------------------------
 // The following do the indicated action to all attached destinations:
@@ -370,18 +221,16 @@ void ELadministrator::clearMsg()  {
 
 void ELadministrator::setThresholds( const ELseverityLevel & sev )  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->threshold = sev;
+  for (auto& sink : sinks_)
+    sink->threshold = sev;
 
 }  // setThresholds()
 
 
 void ELadministrator::setLimits( const ELstring & id, int limit )  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->limits.setLimit( id, limit );
+  for (auto& sink : sinks_)
+    sink->limits.setLimit( id, limit );
 
 }  // setLimits()
 
@@ -389,124 +238,61 @@ void ELadministrator::setLimits( const ELstring & id, int limit )  {
 void ELadministrator::setIntervals
 			( const ELseverityLevel & sev, int interval )  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->limits.setInterval( sev, interval );
+  for (auto& sink : sinks_)
+    sink->limits.setInterval( sev, interval );
 
 }  // setIntervals()
 
 void ELadministrator::setIntervals( const ELstring & id, int interval )  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->limits.setInterval( id, interval );
+  for (auto& sink : sinks_)
+    sink->limits.setInterval( id, interval );
 
 }  // setIntervals()
 
 
 void ELadministrator::setLimits( const ELseverityLevel & sev, int limit )  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->limits.setLimit( sev, limit );
+  for (auto& sink : sinks_)
+    sink->limits.setLimit( sev, limit );
 
 }  // setLimits()
 
 
 void ELadministrator::setTimespans( const ELstring & id, int seconds )  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->limits.setTimespan( id, seconds );
+  for (auto& sink : sinks_)
+    sink->limits.setTimespan( id, seconds );
 
 }  // setTimespans()
 
 
 void ELadministrator::setTimespans( const ELseverityLevel & sev, int seconds )  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->limits.setTimespan( sev, seconds );
+  for (auto& sink : sinks_)
+    sink->limits.setTimespan( sev, seconds );
 
 }  // setTimespans()
 
 
 void ELadministrator::wipe()  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->limits.wipe();
+  for (auto& sink : sinks_)
+    sink->limits.wipe();
 
 }  // wipe()
 
 void ELadministrator::finish()  {
 
-  std::list<boost::shared_ptr<ELdestination> >::iterator d;
-  for ( d = sinks().begin();  d != sinks().end();  ++d )
-    (*d)->finish();
+  for (auto& sink : sinks_)
+    sink->finish();
 
 }  // wipe()
 
 
-// ----------------------------------------------------------------------
-// ELemptyContextSupplier (dummy default ELcontextSupplier):
-// ----------------------------------------------------------------------
-
-class ELemptyContextSupplier : public ELcontextSupplier  {
-
-public:
-
-  virtual
-  ELemptyContextSupplier *
-  clone() const override  {
-    return new ELemptyContextSupplier( *this );
-  }
-  virtual ELstring context()        const override  {  return ""; }
-  virtual ELstring summaryContext() const override  {  return ""; }
-  virtual ELstring fullContext()    const override  {  return ""; }
-
-  virtual ~ELemptyContextSupplier()  {}
-
-};  // ELemptyContextSupplier
-
-
-static ELemptyContextSupplier  emptyContext;
-
-
-// ----------------------------------------------------------------------
-// The Destructable Singleton pattern
-// (see "To Kill a Singleton," Vlissides, C++ Report):
-// ----------------------------------------------------------------------
-
-
-ELadministrator * ELadministrator::instance_ = 0;
-
-
-ELadministrator * ELadministrator::instance()  {
-
-  static ELadminDestroyer destroyer_;
-  // This deviates from Vlissides' pattern where destroyer_ was a static
-  // instance in the ELadministrator class.  This construct should be
-  // equivalent, but the original did not call the destructor under KCC.
-
-  if ( !instance_ )  {
-    instance_ = new ELadministrator;
-    destroyer_.setELadmin( instance_ );
-  }
-  return instance_;
-
-}  // instance()
-
-
 ELadministrator::ELadministrator()
-: process_       ( ""                                                        )
-, context_       ( emptyContext.clone()                                      )
-, abortThreshold_( ELseverityLevel (ELseverityLevel::ELsev_abort)            )
-, exitThreshold_ ( ELseverityLevel (ELseverityLevel::ELsev_highestSeverity   )            )
-, sinks_         (                                                           )
+: sinks_         (                                                           )
 , highSeverity_  ( ELseverityLevel (ELseverityLevel::ELsev_zeroSeverity)     )
-, msg            ( ELseverityLevel (ELseverityLevel::ELsev_unspecified), ""  )
-, msgIsActive    ( false                                                     )
 {
 
   #ifdef ELadministratorCONSTRUCTOR_TRACE
@@ -516,26 +302,7 @@ ELadministrator::ELadministrator()
   for ( int lev = 0;  lev < ELseverityLevel::nLevels;  ++lev )
     severityCounts_[lev] = 0;
 
-}  // ELadministrator()
-
-
-ELadminDestroyer::ELadminDestroyer( ELadministrator * ad )  : admin_( ad )  {}
-
-
-ELadminDestroyer::~ELadminDestroyer()  {
-
-  #ifdef ELadministratorCONSTRUCTOR_TRACE
-    std::cerr << "~ELadminDestroyer: Deleting admin_\n";
-  #endif
-
-  delete admin_;
-
-}  // ~ELadminDestroyer()
-
-
-void ELadminDestroyer::setELadmin( ELadministrator * ad )  { admin_ = ad; }
-
-
+}
 //-*****************************
 // The ELadminstrator destructor
 //-*****************************
@@ -546,9 +313,7 @@ ELadministrator::~ELadministrator()  {
     std::cerr << "ELadministrator Destructor\n";
   #endif
 
-  finishMsg();
-
-  sinks().clear();
+  sinks_.clear();
 
 }  // ~ELadministrator()
 

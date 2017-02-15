@@ -6,7 +6,6 @@
  * EDAalyzer which compare reconstructed tracks to simulated tracks parameter in bins of pt, eta, (phi)
  * to give an empirical parametrization of the track parameters errors.
  *
- * $Dates: 2007/09/04 13:28 $
  *
  * \author Jean-Roch Vlimant  UCSB
  * \author Finn Rebassoo      UCSB
@@ -31,7 +30,6 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 class MagneticField;
-class TrackAssociatorBase;
 class TH1;
 class TH2;
 class Propagator;
@@ -71,7 +69,6 @@ class MuonErrorMatrixAnalyzer : public edm::EDAnalyzer {
 
   /// The associator used for reco/gen association (configurable)
   std::string theAssocLabel;
-  edm::ESHandle<TrackAssociatorBase> theAssociator;
 
   /// hold on the magnetic field
   edm::ESHandle<MagneticField> theField;

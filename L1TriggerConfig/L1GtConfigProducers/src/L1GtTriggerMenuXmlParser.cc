@@ -34,6 +34,7 @@
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/MessageLogger/interface/MessageDrop.h"
+#include "FWCore/Concurrency/interface/Xerces.h"
 
 // constructor
 L1GtTriggerMenuXmlParser::L1GtTriggerMenuXmlParser() :
@@ -343,7 +344,7 @@ XERCES_CPP_NAMESPACE::XercesDOMParser* L1GtTriggerMenuXmlParser::initXML(const s
 
     // try to initialize
     try {
-        XMLPlatformUtils::Initialize();
+        cms::concurrency::xercesInitialize();
     }
     catch (const XMLException& toCatch) {
         char* message = XMLString::transcode(toCatch.getMessage());
@@ -909,7 +910,7 @@ void L1GtTriggerMenuXmlParser::cleanupXML(XERCES_CPP_NAMESPACE::XercesDOMParser*
         m_xmlErrHandler = 0;
     }
 
-    XMLPlatformUtils::Terminate();
+    cms::concurrency::xercesTerminate();
 
 }
 
@@ -2177,7 +2178,7 @@ bool L1GtTriggerMenuXmlParser::parseJetCounts(XERCES_CPP_NAMESPACE::DOMNode* nod
 
     // get countIndex value and fill into structure
     // they are expressed in  base 10  (values: 0 - m_numberL1JetCounts)
-    char* endPtr = const_cast<char*>(type.c_str());
+    char* endPtr = nullptr;
     long int typeInt = strtol(type.c_str(), &endPtr, 10); // base = 10
 
     if (*endPtr != 0) {
@@ -2425,7 +2426,7 @@ bool L1GtTriggerMenuXmlParser::parseHfBitCounts(XERCES_CPP_NAMESPACE::DOMNode* n
 
     // get countIndex value and fill into structure
     // they are expressed in  base 10
-    char* endPtr = const_cast<char*>(type.c_str());
+    char* endPtr = nullptr;
     long int typeInt = strtol(type.c_str(), &endPtr, 10); // base = 10
 
     if (*endPtr != 0) {
@@ -2557,7 +2558,7 @@ bool L1GtTriggerMenuXmlParser::parseHfRingEtSums(XERCES_CPP_NAMESPACE::DOMNode* 
 
     // get etSumIndex value and fill into structure
     // they are expressed in  base 10
-    char* endPtr = const_cast<char*>(type.c_str());
+    char* endPtr = nullptr;
     long int typeInt = strtol(type.c_str(), &endPtr, 10); // base = 10
 
     if (*endPtr != 0) {

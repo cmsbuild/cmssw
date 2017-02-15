@@ -16,7 +16,6 @@
 //
 // Original Author:  Christian Veelken, UC Davis
 //         Created:  Thu Nov  2 13:47:40 CST 2006
-// $Id: IntegralOverPhiFunction.cc,v 1.2 2007/05/28 09:59:50 llista Exp $
 //
 //
 
@@ -98,7 +97,7 @@ void IntegralOverPhiFunction::SetParameterAlpha(double alpha)
   alpha_ = alpha;
 }
 
-void IntegralOverPhiFunction::SetParameters(double* param)
+void IntegralOverPhiFunction::SetParameters(const double* param)
 {
   theta0_ = param[0];
   phi0_ = param[1];

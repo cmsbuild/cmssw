@@ -2,6 +2,7 @@
 #include "SimG4Core/Notification/interface/TrackWithHistory.h"
 #include "SimG4Core/Notification/interface/TrackInformation.h"
 
+
 #include "SimG4CMS/Calo/interface/CaloTrkProcessing.h"
 
 #include "SimG4Core/Application/interface/SimTrackManager.h"
@@ -12,16 +13,19 @@
 #include "FWCore/Utilities/interface/Exception.h"
 
 #include "G4EventManager.hh"
+
 #include "G4LogicalVolumeStore.hh"
 #include "G4LogicalVolume.hh"
 #include "G4Step.hh"
 #include "G4Track.hh"
 
+#include "G4SystemOfUnits.hh"
+
 //#define DebugLog
 
 CaloTrkProcessing::CaloTrkProcessing(G4String name, 
 				     const DDCompactView & cpv,
-				     SensitiveDetectorCatalog & clg, 
+				     const SensitiveDetectorCatalog & clg,
 				     edm::ParameterSet const & p,
 				     const SimTrackManager* manager) : 
   SensitiveCaloDetector(name, cpv, clg, p), lastTrackID(-1),
@@ -41,7 +45,7 @@ CaloTrkProcessing::CaloTrkProcessing(G4String name,
   G4String attribute = "ReadOutName"; 
   DDSpecificsFilter filter;
   DDValue           ddv(attribute,name,0);
-  filter.setCriteria(ddv,DDSpecificsFilter::equals);
+  filter.setCriteria(ddv,DDCompOp::equals);
   DDFilteredView fv(cpv);
   fv.addFilter(filter);
   fv.firstChild();

@@ -10,7 +10,6 @@
 //
 // Author:      Christophe Saout
 // Created:     Sat Apr 24 15:18 CEST 2007
-// $Id: VarProcessor.cc,v 1.12 2013/01/22 16:46:08 chrjones Exp $
 //
 
 #include "FWCore/Utilities/interface/Exception.h"
@@ -120,12 +119,13 @@ VarProcessor *ProcessRegistry<VarProcessor, Calibration::VarProcessor,
 }
 
 void VarProcessor::deriv(double *input, int *conf, double *output,
-                         int *outConf, int *loop, unsigned int offset,
+                         int *outConf, int *loop, LoopCtx& ctx,
+                         unsigned int offset,
                          unsigned int in, unsigned int out_,
                          std::vector<double> &deriv) const
 {
 	ValueIterator iter(inputVars.iter(), input, conf,
-	                   output, outConf, loop, offset);
+	                   output, outConf, loop, ctx, offset);
 
 	eval(iter, nInputVars);
 

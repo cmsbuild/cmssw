@@ -19,6 +19,10 @@
 
 
 #include "HLTrigger/Timer/interface/Timer.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+
+#include "boost/bind.hpp"
+#include "boost/mem_fn.hpp"
 
 #include <iostream>
 
@@ -63,6 +67,18 @@ Timer::~Timer()
 
 }
 
+void Timer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  // # Make sure to enable the "TimerService" service at your top-level cfg!
+  // # by including something like the following:
+  // # service = TimerService {
+  // #  untracked bool useCPUtime = true // set to false for wall-clock-time
+  // # }
+  // # This EDProducer is the module that stores in the Event the timing info
+  edm::ParameterSetDescription desc;
+  desc.addUntracked<bool>("includeSelf",false);
+  descriptions.add("timer", desc);
+}
+
 // fwk calls this method when new module measurement arrives
 void Timer::newTimingMeasurement(const ModuleDescription& iMod, double iTime) 
 {
@@ -84,10 +100,10 @@ void Timer::newTimingMeasurement(const ModuleDescription& iMod, double iTime)
 void
 Timer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-  std::auto_ptr<EventTime> out(new EventTime(timing));
+  std::unique_ptr<EventTime> out(new EventTime(timing));
   // reset data so that we can start from scratch for next event
    timing.reset();
    //
-   iEvent.put(out);
+   iEvent.put(std::move(out));
 }
 

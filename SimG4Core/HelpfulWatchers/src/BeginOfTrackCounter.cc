@@ -8,7 +8,6 @@
 //
 // Original Author:  
 //         Created:  Tue Nov 29 12:26:42 EST 2005
-// $Id$
 //
 
 // system include files
@@ -45,8 +44,8 @@ BeginOfTrackCounter::BeginOfTrackCounter(const edm::ParameterSet& iPSet) :
 void
 BeginOfTrackCounter::produce(edm::Event& e, const edm::EventSetup&)
 {
-   std::auto_ptr<int> product(new int(m_count));
-   e.put(product,m_label);
+   std::unique_ptr<int> product(new int(m_count));
+   e.put(std::move(product),m_label);
    m_count = 0;
 }
 

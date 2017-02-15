@@ -35,20 +35,20 @@ class BeamMonitorBx : public edm::EDAnalyzer {
  protected:
    
   // BeginJob
-  void beginJob();
+  void beginJob() override;
 
   // BeginRun
-  void beginRun(const edm::Run& r, const edm::EventSetup& c);
+  void beginRun(const edm::Run& r, const edm::EventSetup& c) override;
   
-  void analyze(const edm::Event& e, const edm::EventSetup& c) ;
+  void analyze(const edm::Event& e, const edm::EventSetup& c) override;
   
   void beginLuminosityBlock(const edm::LuminosityBlock& lumiSeg, 
-			    const edm::EventSetup& context) ;
+			    const edm::EventSetup& context) override;
   
   void endLuminosityBlock(const edm::LuminosityBlock& lumiSeg, 
-			  const edm::EventSetup& c);
+			  const edm::EventSetup& c) override;
   // EndRun
-  void endRun(const edm::Run& r, const edm::EventSetup& c);
+  void endRun(const edm::Run& r, const edm::EventSetup& c) override;
   // Endjob
   void endJob(const edm::LuminosityBlock& lumiSeg, const edm::EventSetup& c);
   
@@ -57,14 +57,14 @@ class BeamMonitorBx : public edm::EDAnalyzer {
   void FitAndFill(const edm::LuminosityBlock& lumiSeg, int&, int&, int&);
   void BookTables(int, std::map<std::string,std::string>&,std::string);
   void BookTrendHistos(bool, int, std::map<std::string,std::string>&, 
-		       std::string, TString, TString);
+		       std::string, const TString&, const TString&);
   void FillTables(int, int, std::map<std::string,std::string>&,
 		  reco::BeamSpot&, std::string);
   void FillTrendHistos(int, int, std::map<std::string,std::string>&,
-		       reco::BeamSpot&, TString);
+		       reco::BeamSpot&, const TString&);
   void weight(BeamSpotMapBx&, const BeamSpotMapBx&);
   void weight(double& mean,double& meanError,const double& val,const double& valError);
-  const char * formatFitTime( const std::time_t&);
+  void formatFitTime(char *, const std::time_t&);
 
   edm::ParameterSet parameters_;
   std::string monitorName_;

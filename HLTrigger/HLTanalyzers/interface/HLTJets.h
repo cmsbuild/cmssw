@@ -11,6 +11,7 @@
 #include "TChain.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/Framework/interface/ConsumesCollector.h"
 
 #include "DataFormats/JetReco/interface/CaloJetCollection.h"
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
@@ -29,6 +30,7 @@
 #include "DataFormats/CaloTowers/interface/CaloTowerCollection.h"
 #include "DataFormats/Candidate/interface/Candidate.h"
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
+#include "Geometry/CaloTopology/interface/CaloTowerTopology.h"
 
 #include "DataFormats/TauReco/interface/HLTTau.h"
 #include "DataFormats/TauReco/interface/PFTau.h"
@@ -68,7 +70,7 @@ class HLTJets {
 public:
     HLTJets(); 
     
-    void setup(const edm::ParameterSet& pSet, TTree* tree);
+    void setup(const edm::ParameterSet& pSet, TTree* tree, edm::ConsumesCollector&& iC);
     
     /** Analyze the Data */
     void analyze(edm::Event const& iEvent,
@@ -100,6 +102,7 @@ public:
                  const edm::Handle<CaloTowerCollection>          & caloTowersCleanerUpperR45,
                  const edm::Handle<CaloTowerCollection>          & caloTowersCleanerLowerR45,
                  const edm::Handle<CaloTowerCollection>          & caloTowersCleanerNoR45,
+         const CaloTowerTopology * cttopo,
 		 const edm::Handle<reco::PFMETCollection>        & pfmets,  
                  double thresholdForSavingTowers,
                  double                minPtCH,

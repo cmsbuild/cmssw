@@ -13,14 +13,12 @@
 //
 // Original Author:  Jean-Roch Vlimant
 //         Created:  Thu Oct 11 05:20:59 CEST 2007
-// $Id: TrajectoryCleanerESProducer.h,v 1.2 2008/10/07 15:21:14 vlimant Exp $
 //
 //
 
 
 // system include files
 #include <memory>
-#include "boost/shared_ptr.hpp"
 
 // user include files
 #include "FWCore/Framework/interface/ModuleFactory.h"
@@ -36,7 +34,7 @@ class TrajectoryCleanerESProducer : public edm::ESProducer {
       TrajectoryCleanerESProducer(const edm::ParameterSet&);
       ~TrajectoryCleanerESProducer();
 
-  typedef boost::shared_ptr<TrajectoryCleaner> ReturnType;
+  typedef std::shared_ptr<TrajectoryCleaner> ReturnType;
 
       ReturnType produce(const  TrackingComponentsRecord&);
    private:

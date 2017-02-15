@@ -5,8 +5,6 @@
  *
  *  Producer for the UniformMagneticField.
  *
- *  $Date: 2006/05/31 13:43:26 $
- *  $Revision: 1.1 $
  *  \author N. Amapane - CERN
  */
 
@@ -23,7 +21,7 @@ namespace magneticfield {
   public:
     UniformMagneticFieldESProducer(const edm::ParameterSet& pset);
   
-    std::auto_ptr<MagneticField> produce(const IdealMagneticFieldRecord &);
+    std::unique_ptr<MagneticField> produce(const IdealMagneticFieldRecord &);
 
   private:
     // forbid copy ctor and assignment op.

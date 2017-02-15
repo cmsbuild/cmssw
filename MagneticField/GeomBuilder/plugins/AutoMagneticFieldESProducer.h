@@ -6,8 +6,6 @@
  *  Produce a magnetic field map corresponding to the current 
  *  recorded in the condidtion DB.
  *
- *  $Date: 2008/11/14 10:42:40 $
- *  $Revision: 1.1 $
  *  \author Nicola Amapane 11/08
  */
 
@@ -27,7 +25,7 @@ namespace magneticfield {
     AutoMagneticFieldESProducer(const edm::ParameterSet&);
     ~AutoMagneticFieldESProducer();
     
-    std::auto_ptr<MagneticField> produce(const IdealMagneticFieldRecord&);
+    std::unique_ptr<MagneticField> produce(const IdealMagneticFieldRecord&);
     edm::ParameterSet pset;
   private:
     std::string closerModel(float current);

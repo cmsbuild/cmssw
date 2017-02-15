@@ -17,14 +17,14 @@
 #include "Geometry/CommonTopologies/interface/StripTopology.h"
 #include "DQM/SiStripCommon/interface/ExtractTObject.h"
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
-#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 
 SiStripCalibLorentzAngle::SiStripCalibLorentzAngle(edm::ParameterSet const& conf) : ConditionDBWriter<SiStripLorentzAngle>(conf) , tTopo(nullptr), conf_(conf) {}
 
 void SiStripCalibLorentzAngle::algoBeginJob(const edm::EventSetup& c){
   //Retrieve tracker topology from geometry
   edm::ESHandle<TrackerTopology> tTopoHandle;
-  c.get<IdealGeometryRecord>().get(tTopoHandle);
+  c.get<TrackerTopologyRcd>().get(tTopoHandle);
   tTopo = tTopoHandle.product();
 
   c.get<TrackerDigiGeometryRecord>().get(estracker);
@@ -302,9 +302,9 @@ void SiStripCalibLorentzAngle::algoBeginJob(const edm::EventSetup& c){
   TF1 *fitfunc= new TF1("fitfunc","([4]/[3])*[1]*(TMath::Abs(x-[0]))+[2]",-1,1);
   TF1 *fitfunc2IT= new TF1("fitfunc2IT","([4]/[3])*[1]*(TMath::Abs(x-[0]))+[2]",-1,1);
  
-  ofstream NoEntries;
+  std::ofstream NoEntries;
   NoEntries.open(NoEntriesHisto_.c_str());
-  ofstream Rep;
+  std::ofstream Rep;
   Rep.open(LAreport_.c_str());
   
   gStyle->SetOptStat(1110);

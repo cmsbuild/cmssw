@@ -44,6 +44,7 @@ class RadialStripTopology : public StripTopology {
    */
   virtual LocalPoint localPosition(float strip) const=0;
 
+  using StripTopology::localPosition;
   /** 
    * LocalPoint for a given MeasurementPoint <BR>
    * What's a MeasurementPoint?  <BR>
@@ -59,6 +60,7 @@ class RadialStripTopology : public StripTopology {
    */
   virtual LocalPoint localPosition(const MeasurementPoint&) const=0;
 
+  using StripTopology::localError;
   /** 
    * LocalError for a pure strip measurement, where 'strip'
    * is the (float) position (a 'phi' angle wrt y axis) and
@@ -90,7 +92,7 @@ class RadialStripTopology : public StripTopology {
    * not sensible for a RadialStripTopology since strip widths vary with local y.
    * Use localPitch(.) instead.
    */
-  virtual float pitch() const GCC11_FINAL;
+  virtual float pitch() const final;
 
   /** 
    * Pitch (strip width) at a given LocalPoint. <BR>

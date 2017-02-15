@@ -1,108 +1,103 @@
 #include "DQMOffline/Trigger/interface/HLTTauDQML1Plotter.h"
 
-HLTTauDQML1Plotter::HLTTauDQML1Plotter( const edm::ParameterSet& ps, int etbins, int etabins, int phibins, double maxpt, bool ref, double dr, std::string dqmBaseFolder ) {
-    //Initialize Plotter
-    name_ = "HLTTauDQML1Plotter";
-    
-    //Process PSet
-    try {
-        triggerTag_       = ps.getUntrackedParameter<std::string>("DQMFolder");
-        triggerTagAlias_  = ps.getUntrackedParameter<std::string>("Alias","");
-        l1ExtraTaus_      = ps.getParameter<edm::InputTag>("L1Taus");
-        l1ExtraJets_      = ps.getParameter<edm::InputTag>("L1Jets");
-        l1ExtraElectrons_ = ps.getParameter<edm::InputTag>("L1Electrons");
-        l1ExtraMuons_     = ps.getParameter<edm::InputTag>("L1Muons");
-        doRefAnalysis_    = ref;
-        dqmBaseFolder_    = dqmBaseFolder;
-        matchDeltaR_      = dr;
-        maxEt_            = maxpt;
-        binsEt_           = etbins;
-        binsEta_          = etabins;
-        binsPhi_          = phibins;
-        validity_         = true;
-    } catch ( cms::Exception &e ) {
-        edm::LogInfo("HLTTauDQML1Plotter::HLTTauDQML1Plotter") << e.what() << std::endl;
-        validity_ = false;
-        return;
+#include "FWCore/Framework/interface/Event.h"
+
+#include<cstring>
+
+namespace {
+  double getMaxEta(int binsEta, double widthEta) {
+    if(widthEta <= 0.0) {
+      edm::LogWarning("HLTTauDQMOffline") << "HLTTauDQML1Plotter::HLTTauDQML1Plotter: EtaHistoBinWidth = " << widthEta << " <= 0, using default value 0.348 instead";
+      widthEta = 0.348;
     }
-    
-    if (store_) {
-        //Create the histograms
-        store_->setCurrentFolder(triggerTag());
-        store_->removeContents();
-        
-        l1tauEt_ = store_->book1D("L1TauEt","L1 #tau E_{T};L1 #tau E_{T};entries",binsEt_,0,maxEt_);
-        l1tauEta_ = store_->book1D("L1TauEta","L1 #tau #eta;L1 #tau #eta;entries",binsEta_,-2.5,2.5);
-        l1tauPhi_ = store_->book1D("L1TauPhi","L1 #tau #phi;L1 #tau #phi;entries",binsPhi_,-3.2,3.2);
-        
-        l1jetEt_ = store_->book1D("L1JetEt","L1 jet E_{T};L1 Central Jet E_{T};entries",binsEt_,0,maxEt_);
-        l1jetEta_ = store_->book1D("L1JetEta","L1 jet #eta;L1 Central Jet #eta;entries",binsEta_,-2.5,2.5);
-        l1jetPhi_ = store_->book1D("L1JetPhi","L1 jet #phi;L1 Central Jet #phi;entries",binsPhi_,-3.2,3.2);
-        
-        inputEvents_ = store_->book1D("InputEvents","Events Read;;entries",2,0,2);
-        
-        l1electronEt_ = store_->book1D("L1ElectronEt","L1 electron E_{T};L1 e/#gamma  E_{T};entries",binsEt_,0,maxEt_);
-        l1electronEta_ = store_->book1D("L1ElectronEta","L1 electron #eta;L1 e/#gamma  #eta;entries",binsEta_,-2.5,2.5);
-        l1electronPhi_ = store_->book1D("L1ElectronPhi","L1 electron #phi;L1 e/#gamma  #phi;entries",binsPhi_,-3.2,3.2);
-        
-        l1muonEt_ = store_->book1D("L1MuonEt","L1 muon p_{T};L1 #mu p_{T};entries",binsEt_,0,maxEt_);
-        l1muonEta_ = store_->book1D("L1MuonEta","L1 muon #eta;L1 #mu #eta;entries",binsEta_,-2.5,2.5);
-        l1muonPhi_ = store_->book1D("L1MuonPhi","L1 muon #phi;L1 #mu #phi;entries",binsPhi_,-3.2,3.2);
-        
-        l1doubleTauPath_ = store_->book2D("L1DoubleTau","L1 Double Tau Path E_{T};first L1 #tau p_{T};second L1 #tau p_{T}",binsEt_,0,maxEt_,binsEt_,0,maxEt_);
-        l1muonTauPath_ = store_->book2D("L1MuonTau","L1 Muon Tau Path E_{T};first L1 #tau p_{T};first L1 #gamma p_{T}",binsEt_,0,maxEt_,binsEt_,0,maxEt_);
-        l1electronTauPath_ = store_->book2D("L1ElectronTau","L1 Electron Tau Path E_{T};first L1 #mu p_{T};second L1 #mu p_{T}",binsEt_,0,maxEt_,binsEt_,0,maxEt_);
-        
-        firstTauEt_ = store_->book1D("L1LeadTauEt","L1 lead #tau E_{T}",binsEt_,0,maxEt_);
-        firstTauEt_->getTH1F()->Sumw2();
-        
-        secondTauEt_ = store_->book1D("L1SecondTauEt","L1 second #tau E_{T}",binsEt_,0,maxEt_);
-        secondTauEt_->getTH1F()->Sumw2();
-        
-        if (doRefAnalysis_) {
-            l1tauEtRes_ = store_->book1D("L1TauEtResol","L1 #tau E_{T} resolution;[L1 #tau E_{T}-Ref #tau E_{T}]/Ref #tau E_{T};entries",40,-2,2);
-            
-            store_->setCurrentFolder(triggerTag()+"/EfficiencyHelpers");
-            store_->removeContents();
-            
-            l1tauEtEffNum_ = store_->book1D("L1TauEtEffNum","L1 #tau E_{T} Efficiency Numerator",binsEt_,0,maxEt_);
-            l1tauEtEffNum_->getTH1F()->Sumw2();
-            
-            l1tauEtEffDenom_ = store_->book1D("L1TauEtEffDenom","L1 #tau E_{T} Denominator",binsEt_,0,maxEt_);
-            l1tauEtEffDenom_->getTH1F()->Sumw2();
-            
-            l1tauEtaEffNum_ = store_->book1D("L1TauEtaEffNum","L1 #tau #eta Efficiency",binsEta_,-2.5,2.5);
-            l1tauEtaEffNum_->getTH1F()->Sumw2();
-            
-            l1tauEtaEffDenom_ = store_->book1D("L1TauEtaEffDenom","L1 #tau #eta Denominator",binsEta_,-2.5,2.5);
-            l1tauEtaEffDenom_->getTH1F()->Sumw2();
-            
-            l1tauPhiEffNum_ = store_->book1D("L1TauPhiEffNum","L1 #tau #phi Efficiency",binsPhi_,-3.2,3.2);
-            l1tauPhiEffNum_->getTH1F()->Sumw2();
-            
-            l1tauPhiEffDenom_ = store_->book1D("L1TauPhiEffDenom","L1 #tau #phi Denominator",binsPhi_,-3.2,3.2);
-            l1tauPhiEffDenom_->getTH1F()->Sumw2();
-            
-            l1jetEtEffNum_ = store_->book1D("L1JetEtEffNum","L1 jet E_{T} Efficiency",binsEt_,0,maxEt_);
-            l1jetEtEffNum_->getTH1F()->Sumw2();
-            
-            l1jetEtEffDenom_ = store_->book1D("L1JetEtEffDenom","L1 jet E_{T} Denominator",binsEt_,0,maxEt_);
-            l1jetEtEffDenom_->getTH1F()->Sumw2();
-            
-            l1jetEtaEffNum_ = store_->book1D("L1JetEtaEffNum","L1 jet #eta Efficiency",binsEta_,-2.5,2.5);
-            l1jetEtaEffNum_->getTH1F()->Sumw2();
-            
-            l1jetEtaEffDenom_ = store_->book1D("L1JetEtaEffDenom","L1 jet #eta Denominator",binsEta_,-2.5,2.5);
-            l1jetEtaEffDenom_->getTH1F()->Sumw2();
-            
-            l1jetPhiEffNum_ = store_->book1D("L1JetPhiEffNum","L1 jet #phi Efficiency",binsPhi_,-3.2,3.2);
-            l1jetPhiEffNum_->getTH1F()->Sumw2();
-            
-            l1jetPhiEffDenom_ = store_->book1D("L1JetPhiEffDenom","L1 jet #phi Denominator",binsPhi_,-3.2,3.2);
-            l1jetPhiEffDenom_->getTH1F()->Sumw2();
-        }
-    }
+    return binsEta/2*widthEta;
+  }
 }
+
+HLTTauDQML1Plotter::HLTTauDQML1Plotter(const edm::ParameterSet& ps, edm::ConsumesCollector&& cc, int phibins, double maxpt, double maxhighpt, bool ref, double dr, const std::string& dqmBaseFolder):
+  HLTTauDQMPlotter(ps, dqmBaseFolder),
+  doRefAnalysis_(ref),
+  matchDeltaR_(dr),
+  maxPt_(maxpt),
+  maxHighPt_(maxhighpt),
+  binsEt_(ps.getUntrackedParameter<int>("EtHistoBins", 25)),
+  binsEta_(ps.getUntrackedParameter<int>("EtaHistoBins", 14)),
+  binsPhi_(phibins),
+  maxEta_(getMaxEta(binsEta_, ps.getUntrackedParameter<double>("EtaHistoBinWidth", 0.348)))
+{
+  if(!configValid_)
+    return;
+
+  //Process PSet
+  l1stage2Taus_     = ps.getUntrackedParameter<edm::InputTag>("L1Taus");
+  l1stage2TausToken_= cc.consumes<l1t::TauBxCollection>(l1stage2Taus_);
+ 
+  l1stage2Sums_     = ps.getUntrackedParameter<edm::InputTag>("L1ETM");
+  l1stage2SumsToken_= cc.consumes<l1t::EtSumBxCollection>(l1stage2Sums_);
+  l1ETMMin_         = ps.getUntrackedParameter<double>("L1ETMMin");
+
+  configValid_ = true;
+}
+
+void HLTTauDQML1Plotter::bookHistograms(DQMStore::IBooker &iBooker) {
+  if(!configValid_)
+    return;
+
+  // The L1 phi plot is asymmetric around 0 because of the discrete nature of L1 phi
+  constexpr float pi = 3.1416f;
+  constexpr float phiShift = pi/18; // half of 2pi/18 bin
+  constexpr float minPhi = -pi+phiShift;
+  constexpr float maxPhi = pi+phiShift;
+
+  constexpr int BUFMAX = 256;
+  char buffer[BUFMAX] = "";
+
+  //Create the histograms
+  iBooker.setCurrentFolder(triggerTag());
+        
+  l1tauEt_ = iBooker.book1D("L1TauEt","L1 #tau E_{T};L1 #tau E_{T};entries",binsEt_,0,maxPt_);
+  l1tauEta_ = iBooker.book1D("L1TauEta","L1 #tau #eta;L1 #tau #eta;entries",binsEta_,-maxEta_,maxEta_);
+  l1tauPhi_ = iBooker.book1D("L1TauPhi","L1 #tau #phi;L1 #tau #phi;entries",binsPhi_,minPhi,maxPhi);
+
+  l1etmEt_  = iBooker.book1D("L1ETM","L1 ETM E_{T};L1 ETM E_{T};entries",binsEt_,0,maxPt_);
+  l1etmPhi_ = iBooker.book1D("L1ETMPhi","L1 ETM #phi;L1 ETM #phi;entries",binsPhi_,minPhi,maxPhi);
+        
+  snprintf(buffer, BUFMAX, "L1 leading #tau E_{T};L1 #tau E_{T};entries");
+  firstTauEt_ = iBooker.book1D("L1LeadTauEt", buffer, binsEt_, 0, maxPt_);
+  snprintf(buffer, BUFMAX, "L1 leading #tau #eta;L1 #tau #eta;entries");
+  firstTauEta_ = iBooker.book1D("L1LeadTauEta", buffer, binsEta_, -maxEta_, maxEta_);
+  snprintf(buffer, BUFMAX, "L1 leading #tau #phi;L1 #tau #phi;entries");
+  firstTauPhi_ = iBooker.book1D("L1LeadTauPhi", buffer, binsPhi_, minPhi, maxPhi);
+        
+  snprintf(buffer, BUFMAX, "L1 second-leading #tau E_{T};L1 #tau E_{T};entries");
+  secondTauEt_ = iBooker.book1D("L1SecondTauEt", buffer, binsEt_, 0, maxPt_);
+  snprintf(buffer, BUFMAX, "L1 second-leading #tau #eta;L1 #tau #eta;entries");
+  secondTauEta_ = iBooker.book1D("L1SecondTauEta", buffer, binsEta_, -maxEta_, maxEta_);
+  snprintf(buffer, BUFMAX, "L1 second-leading #tau #phi;L1 #tau #phi;entries");
+  secondTauPhi_ = iBooker.book1D("L1SecondTauPhi", buffer, binsPhi_, minPhi, maxPhi);
+        
+  if (doRefAnalysis_) {
+    l1tauEtRes_ = iBooker.book1D("L1TauEtResol","L1 #tau E_{T} resolution;[L1 #tau E_{T}-Ref #tau E_{T}]/Ref #tau E_{T};entries",60,-1,4);
+            
+    iBooker.setCurrentFolder(triggerTag()+"/helpers");
+            
+    l1tauEtEffNum_ = iBooker.book1D("L1TauEtEffNum","L1 #tau E_{T} Efficiency;Ref #tau E_{T};entries",binsEt_,0,maxPt_);
+    l1tauHighEtEffNum_ = iBooker.book1D("L1TauHighEtEffNum","L1 #tau E_{T} Efficiency (high E_{T});Ref #tau E_{T};entries",binsEt_,0,maxHighPt_);
+            
+    l1tauEtEffDenom_ = iBooker.book1D("L1TauEtEffDenom","L1 #tau E_{T} Denominator;Ref #tau E_{T};entries",binsEt_,0,maxPt_);
+    l1tauHighEtEffDenom_ = iBooker.book1D("L1TauHighEtEffDenom","L1 #tau E_{T} Denominator (high E_{T});Ref #tau E_{T};Efficiency",binsEt_,0,maxHighPt_);
+            
+    l1tauEtaEffNum_ = iBooker.book1D("L1TauEtaEffNum","L1 #tau #eta Efficiency;Ref #tau #eta;entries",binsEta_,-maxEta_,maxEta_);
+    l1tauEtaEffDenom_ = iBooker.book1D("L1TauEtaEffDenom","L1 #tau #eta Denominator;Ref #tau #eta;entries",binsEta_,-maxEta_,maxEta_);
+            
+    l1tauPhiEffNum_ = iBooker.book1D("L1TauPhiEffNum","L1 #tau #phi Efficiency;Ref #tau #phi;entries",binsPhi_,minPhi,maxPhi);
+    l1tauPhiEffDenom_ = iBooker.book1D("L1TauPhiEffDenom","L1 #tau #phi Denominator;Ref #tau #phi;Efficiency",binsPhi_,minPhi,maxPhi);
+
+    l1etmEtEffNum_ = iBooker.book1D("L1ETMEtEffNum", "L1 ETM Efficiency;Ref MET;entries",binsEt_, 0, maxPt_);
+    l1etmEtEffDenom_ = iBooker.book1D("L1ETMEtEffDenom","L1 ETM Denominator;Ref MET;entries",binsEt_,0,maxPt_);
+  }
+}
+
 
 HLTTauDQML1Plotter::~HLTTauDQML1Plotter() {
 }
@@ -111,180 +106,109 @@ HLTTauDQML1Plotter::~HLTTauDQML1Plotter() {
 // member functions
 //
 
-void HLTTauDQML1Plotter::analyze( const edm::Event& iEvent, const edm::EventSetup& iSetup, const std::map<int,LVColl>& refC ) {
-    LVColl refTaus, refElectrons, refMuons;
-    
+void HLTTauDQML1Plotter::analyze( const edm::Event& iEvent, const edm::EventSetup& iSetup, const HLTTauDQMOfflineObjects& refC ) {
     if ( doRefAnalysis_ ) {
-        std::map<int,LVColl>::const_iterator iref;
-
         //Tau reference
-        iref = refC.find(15);
-        if ( iref != refC.end() ) refTaus = iref->second;
-        
-        //Electron reference
-        iref = refC.find(11);
-        if ( iref != refC.end() ) refElectrons = iref->second;
-        
-        //Muon reference
-        iref = refC.find(13);
-        if ( iref != refC.end() ) refMuons = iref->second;
-        
-        for ( LVColl::const_iterator iter = refTaus.begin(); iter != refTaus.end(); ++iter ) {
+        for ( LVColl::const_iterator iter = refC.taus.begin(); iter != refC.taus.end(); ++iter ) {
             l1tauEtEffDenom_->Fill(iter->pt());
-            l1jetEtEffDenom_->Fill(iter->pt());
+            l1tauHighEtEffDenom_->Fill(iter->pt());
             
             l1tauEtaEffDenom_->Fill(iter->eta());
-            l1jetEtaEffDenom_->Fill(iter->eta());
             
             l1tauPhiEffDenom_->Fill(iter->phi());
-            l1jetPhiEffDenom_->Fill(iter->phi());
         }
+	if(refC.met.size() > 0) l1etmEtEffDenom_->Fill(refC.met[0].pt());
     }
-    
+
     //Analyze L1 Objects (Tau+Jets)
-    edm::Handle<l1extra::L1JetParticleCollection> taus;
-    edm::Handle<l1extra::L1JetParticleCollection> jets;
-    edm::Handle<l1extra::L1EmParticleCollection> electrons;
-    edm::Handle<l1extra::L1MuonParticleCollection> muons;
-    
+    edm::Handle<l1t::TauBxCollection> taus;
+    iEvent.getByToken(l1stage2TausToken_, taus);  
+            
+    edm::Handle<l1t::EtSumBxCollection> sums;
+    iEvent.getByToken(l1stage2SumsToken_, sums);
+
     LVColl pathTaus;
-    LVColl pathMuons;
-    LVColl pathElectrons;
     
     //Set Variables for the threshold plot
     LVColl l1taus;
-    LVColl l1electrons;
-    LVColl l1muons;
-    LVColl l1jets;
+    LVColl l1met;
 
-    bool gotL1Taus = iEvent.getByLabel(l1ExtraTaus_,taus) && taus.isValid();
-    bool gotL1Jets = iEvent.getByLabel(l1ExtraJets_,jets) && jets.isValid();
-    bool gotL1Electrons = iEvent.getByLabel(l1ExtraElectrons_,electrons) && electrons.isValid();
-    bool gotL1Muons = iEvent.getByLabel(l1ExtraMuons_,muons) && muons.isValid();
-    
-    if ( gotL1Taus ) {
-        if ( taus->size() > 0 ) {
-            if ( !doRefAnalysis_ ) {
-                firstTauEt_->Fill((*taus)[0].pt());
-                if ( taus->size() > 1 ) secondTauEt_->Fill((*taus)[0].pt());
-            }
-            for ( l1extra::L1JetParticleCollection::const_iterator i = taus->begin(); i != taus->end(); ++i ) {
-                l1taus.push_back(i->p4());
-                if ( !doRefAnalysis_ ) {
-                    l1tauEt_->Fill(i->et());
-                    l1tauEta_->Fill(i->eta());
-                    l1tauPhi_->Fill(i->phi());
-                    pathTaus.push_back(i->p4());
-                }
-            }
+    if(taus.isValid()) {
+      for(l1t::TauBxCollection::const_iterator i = taus->begin(); i != taus->end(); ++i) {
+        l1taus.push_back(i->p4());
+        if(!doRefAnalysis_) {
+          l1tauEt_->Fill(i->et());
+          l1tauEta_->Fill(i->eta());
+          l1tauPhi_->Fill(i->phi());
+          pathTaus.push_back(i->p4());
         }
+      }
     }
-    if ( gotL1Jets ) {
-        if ( jets->size() > 0 ) {
-            for( l1extra::L1JetParticleCollection::const_iterator i = jets->begin(); i != jets->end(); ++i ) {	
-                l1jets.push_back(i->p4());
-                if ( !doRefAnalysis_ ) {
-                    l1jetEt_->Fill(i->et());
-                    l1jetEta_->Fill(i->eta());
-                    l1jetPhi_->Fill(i->phi());
-                    pathTaus.push_back(i->p4());
-                }
-            }
+    else {
+      edm::LogWarning("HLTTauDQMOffline") << "HLTTauDQML1Plotter::analyze: unable to read L1 tau collection " << l1stage2Taus_.encode();
+    }
+
+    if(sums.isValid() && sums.product()->size() > 0) {
+      if(!doRefAnalysis_) {
+        for (int ibx = sums->getFirstBX(); ibx <= sums->getLastBX(); ++ibx) {
+          for (l1t::EtSumBxCollection::const_iterator it=sums->begin(ibx); it!=sums->end(ibx); it++) {
+            int type = static_cast<int>( it->getType() );
+            if(type == l1t::EtSum::EtSumType::kMissingEt) l1etmEt_->Fill(it->et());
+          }
         }
+      }
     }
-    if ( gotL1Electrons ) {
-        if( electrons->size() > 0 ) {
-            for ( l1extra::L1EmParticleCollection::const_iterator i = electrons->begin(); i != electrons->end(); ++i ) {
-                l1electrons.push_back(i->p4());
-                l1electronEt_->Fill(i->et());
-                l1electronEta_->Fill(i->eta());
-                l1electronPhi_->Fill(i->phi());
-                pathElectrons.push_back(i->p4());
-            }
-        }
+    else {
+      edm::LogWarning("HLTTauDQMOffline") << "HLTTauDQML1Plotter::analyze: unable to read L1 met collection " << l1stage2Sums_.encode();
     }
-    if ( gotL1Muons ) {
-        if ( muons->size() > 0 ) {
-            for ( l1extra::L1MuonParticleCollection::const_iterator i = muons->begin(); i != muons->end(); ++i ) {
-                l1muons.push_back(i->p4());
-                l1muonEt_->Fill(i->et());
-                l1muonEta_->Fill(i->eta());
-                l1muonPhi_->Fill(i->phi());
-                pathMuons.push_back(i->p4());
-            }
-        }
-    }
-    
+
     //Now do the efficiency matching
     if ( doRefAnalysis_ ) {
-        for ( LVColl::const_iterator i = refTaus.begin(); i != refTaus.end(); ++i ) {
+        for ( LVColl::const_iterator i = refC.taus.begin(); i != refC.taus.end(); ++i ) {
             std::pair<bool,LV> m = match(*i,l1taus,matchDeltaR_);
             if ( m.first ) {
                 l1tauEt_->Fill(m.second.pt());
                 l1tauEta_->Fill(m.second.eta());
                 l1tauPhi_->Fill(m.second.phi());
+
                 l1tauEtEffNum_->Fill(i->pt());
+                l1tauHighEtEffNum_->Fill(i->pt());
                 l1tauEtaEffNum_->Fill(i->eta());
                 l1tauPhiEffNum_->Fill(i->phi());
+
                 l1tauEtRes_->Fill((m.second.pt()-i->pt())/i->pt());
+
                 pathTaus.push_back(m.second);
             }
         }
+
+        if(sums.isValid() && sums.product()->size() > 0) {
+          for (int ibx = sums->getFirstBX(); ibx <= sums->getLastBX(); ++ibx) {
+            for (l1t::EtSumBxCollection::const_iterator it=sums->begin(ibx); it!=sums->end(ibx); it++) {
+              int type = static_cast<int>( it->getType() );
+              if(type == l1t::EtSum::EtSumType::kMissingEt) {
+                l1etmEt_->Fill(it->et());
+                l1etmPhi_->Fill(it->phi());
         
-        for ( LVColl::const_iterator i = refTaus.begin(); i != refTaus.end(); ++i ) {
-            std::pair<bool,LV> m = match(*i,l1jets,matchDeltaR_);
-            if ( m.first ) {
-                l1jetEt_->Fill(m.second.pt());
-                l1jetEta_->Fill(m.second.eta());
-                l1jetPhi_->Fill(m.second.phi());
-                l1jetEtEffNum_->Fill(i->pt());
-                l1jetEtaEffNum_->Fill(i->eta());
-                l1jetPhiEffNum_->Fill(i->phi());
+                if( it->et() > l1ETMMin_){
+                  l1etmEtEffNum_->Fill(it->et());
+                }
+              }
             }
-        }
-        
-        for ( LVColl::const_iterator i = refElectrons.begin(); i != refElectrons.end(); ++i ) {
-            std::pair<bool,LV> m = match(*i,l1electrons,matchDeltaR_);
-            if( m.first ) {
-                l1electronEt_->Fill(m.second.pt());
-                l1electronEta_->Fill(m.second.eta());
-                l1electronPhi_->Fill(m.second.phi());
-                pathElectrons.push_back(m.second);
-            }
-        }
-        
-        for ( LVColl::const_iterator i = refMuons.begin(); i != refMuons.end(); ++i ) {
-            std::pair<bool,LV> m = match(*i,l1muons,matchDeltaR_);
-            if ( m.first ) {
-                l1muonEt_->Fill(m.second.pt());
-                l1muonEta_->Fill(m.second.eta());
-                l1muonPhi_->Fill(m.second.phi());
-                pathMuons.push_back(m.second);
-            }
+          }
         }
     }
     
-    
     //Fill the Threshold Monitoring
-    if(pathTaus.size() > 1) std::sort(pathTaus.begin(),pathTaus.end(),ptSort);
-    if(pathElectrons.size() > 1) std::sort(pathElectrons.begin(),pathElectrons.end(),ptSort);
-    if(pathMuons.size() > 1) std::sort(pathMuons.begin(),pathMuons.end(),ptSort);
-    
+    if(pathTaus.size() > 1) std::sort(pathTaus.begin(), pathTaus.end(), [](const LV& a, const LV& b) { return a.pt() > b.pt(); });
     if ( pathTaus.size() > 0 ) {
         firstTauEt_->Fill(pathTaus[0].pt());
-        inputEvents_->Fill(0.5);
+        firstTauEta_->Fill(pathTaus[0].eta());
+        firstTauPhi_->Fill(pathTaus[0].phi());
     }
     if ( pathTaus.size() > 1 ) {
         secondTauEt_->Fill(pathTaus[1].pt());
-        inputEvents_->Fill(1.5);
-    }
-    if ( pathTaus.size() >= 2 ) {
-        l1doubleTauPath_->Fill(pathTaus[0].pt(),pathTaus[1].pt());
-    }
-    if ( pathTaus.size() >= 1 && pathElectrons.size() >= 1 ) {
-        l1electronTauPath_->Fill(pathTaus[0].pt(),pathElectrons[0].pt());
-    }
-    if ( pathTaus.size() >= 1 && pathMuons.size() >= 1 ) {
-        l1muonTauPath_->Fill(pathTaus[0].pt(),pathMuons[0].pt());
+        secondTauEta_->Fill(pathTaus[1].eta());
+        secondTauPhi_->Fill(pathTaus[1].phi());
     }
 }

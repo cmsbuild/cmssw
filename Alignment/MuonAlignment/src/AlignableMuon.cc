@@ -14,7 +14,7 @@
 #include "Geometry/CSCGeometry/interface/CSCGeometry.h" 
 #include <Geometry/DTGeometry/interface/DTLayer.h> 
 #include "CondFormats/Alignment/interface/Alignments.h" 
-#include "CondFormats/Alignment/interface/AlignmentErrors.h" 
+#include "CondFormats/Alignment/interface/AlignmentErrorsExtended.h" 
 #include "CondFormats/Alignment/interface/AlignmentSorter.h" 
 
 // Muon  components
@@ -29,7 +29,8 @@
 
 //--------------------------------------------------------------------------------------------------
 AlignableMuon::AlignableMuon( const DTGeometry* dtGeometry , const CSCGeometry* cscGeometry )
-  : AlignableComposite(0, align::AlignableMuon) // cannot yet set id, use 0
+  : AlignableComposite(0, align::AlignableMuon), // cannot yet set id, use 0
+    alignableObjectId_(nullptr, dtGeometry, cscGeometry)
 {
 
   // Build the muon barrel
@@ -80,8 +81,8 @@ void AlignableMuon::buildDTBarrel( const DTGeometry* pDT  )
     for( int ist = 1 ; ist < 5 ; ist++ ){
   
       // Loop over geom DT Chambers
-      std::vector<GeomDet*> theSLs;
-      for( std::vector<DTChamber*>::const_iterator det = pDT->chambers().begin(); 
+      std::vector<const GeomDet*> theSLs;
+      for(auto  det = pDT->chambers().begin(); 
 		   det != pDT->chambers().end(); ++det ){
         // Get the chamber ID
         DTChamberId chamberId = (*det)->id(); 
@@ -181,8 +182,8 @@ void AlignableMuon::buildCSCEndcap( const CSCGeometry* pCSC  )
       for ( int iri = 1; iri < 5; iri++ ){
 	 
 	 // Loop over geom CSC Chambers
-	 std::vector<CSCChamber*> vc = pCSC->chambers();
-	 for( std::vector<CSCChamber*>::const_iterator det = vc.begin();  det != vc.end(); ++det ){
+ 	 const CSCGeometry::ChamberContainer& vc = pCSC->chambers();
+	 for( auto det = vc.begin();  det != vc.end(); ++det ){
 
 	    // Get the CSCDet ID
 	    CSCDetId cscId = (*det)->id();
@@ -417,23 +418,23 @@ Alignments* AlignableMuon::alignments( void ) const
 
 }
 //__________________________________________________________________________________________________
-AlignmentErrors* AlignableMuon::alignmentErrors( void ) const
+AlignmentErrorsExtended* AlignableMuon::alignmentErrors( void ) const
 {
 
   align::Alignables comp = this->components();
-  AlignmentErrors* m_alignmentErrors = new AlignmentErrors();
+  AlignmentErrorsExtended* m_alignmentErrors = new AlignmentErrorsExtended();
 
   // Add components recursively
   for ( align::Alignables::iterator i=comp.begin(); i!=comp.end(); i++ )
     {
-	  AlignmentErrors* tmpAlignmentErrors = (*i)->alignmentErrors();
-      std::copy( tmpAlignmentErrors->m_alignError.begin(), tmpAlignmentErrors->m_alignError.end(), 
+	  AlignmentErrorsExtended* tmpAlignmentErrorsExtended = (*i)->alignmentErrors();
+      std::copy( tmpAlignmentErrorsExtended->m_alignError.begin(), tmpAlignmentErrorsExtended->m_alignError.end(), 
 				 std::back_inserter(m_alignmentErrors->m_alignError) );
-	  delete tmpAlignmentErrors;
+	  delete tmpAlignmentErrorsExtended;
     }
 
   std::sort( m_alignmentErrors->m_alignError.begin(), m_alignmentErrors->m_alignError.end(), 
-			 lessAlignmentDetId<AlignTransformError>() );
+			 lessAlignmentDetId<AlignTransformErrorExtended>() );
 
   return m_alignmentErrors;
 
@@ -448,12 +449,12 @@ Alignments* AlignableMuon::dtAlignments( void )
 
 }
 //__________________________________________________________________________________________________
-AlignmentErrors* AlignableMuon::dtAlignmentErrors( void )
+AlignmentErrorsExtended* AlignableMuon::dtAlignmentErrorsExtended( void )
 {
   // Retrieve muon barrel alignment errors
-  AlignmentErrors* tmpAlignmentErrors = this->DTBarrel().front()->alignmentErrors();
+  AlignmentErrorsExtended* tmpAlignmentErrorsExtended = this->DTBarrel().front()->alignmentErrors();
 
-  return tmpAlignmentErrors;
+  return tmpAlignmentErrorsExtended;
   
 }
 //__________________________________________________________________________________________________
@@ -472,17 +473,17 @@ Alignments* AlignableMuon::cscAlignments( void )
 
 }
 //__________________________________________________________________________________________________
-AlignmentErrors* AlignableMuon::cscAlignmentErrors( void )
+AlignmentErrorsExtended* AlignableMuon::cscAlignmentErrorsExtended( void )
 {
 
   // Retrieve muon endcaps alignment errors
-   AlignmentErrors* cscEndCap1Errors = this->CSCEndcaps().front()->alignmentErrors();
-   AlignmentErrors* cscEndCap2Errors = this->CSCEndcaps().back()->alignmentErrors();
-   AlignmentErrors* tmpAlignmentErrors    = new AlignmentErrors();
+   AlignmentErrorsExtended* cscEndCap1Errors = this->CSCEndcaps().front()->alignmentErrors();
+   AlignmentErrorsExtended* cscEndCap2Errors = this->CSCEndcaps().back()->alignmentErrors();
+   AlignmentErrorsExtended* tmpAlignmentErrorsExtended    = new AlignmentErrorsExtended();
 
-  std::copy(cscEndCap1Errors->m_alignError.begin(), cscEndCap1Errors->m_alignError.end(), back_inserter(tmpAlignmentErrors->m_alignError) );
-  std::copy(cscEndCap2Errors->m_alignError.begin(), cscEndCap2Errors->m_alignError.end(), back_inserter(tmpAlignmentErrors->m_alignError) );
+  std::copy(cscEndCap1Errors->m_alignError.begin(), cscEndCap1Errors->m_alignError.end(), back_inserter(tmpAlignmentErrorsExtended->m_alignError) );
+  std::copy(cscEndCap2Errors->m_alignError.begin(), cscEndCap2Errors->m_alignError.end(), back_inserter(tmpAlignmentErrorsExtended->m_alignError) );
   
-  return tmpAlignmentErrors;
+  return tmpAlignmentErrorsExtended;
   
 }

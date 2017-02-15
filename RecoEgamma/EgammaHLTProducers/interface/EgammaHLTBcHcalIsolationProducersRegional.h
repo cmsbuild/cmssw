@@ -10,12 +10,20 @@
 #include <memory>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "RecoEgamma/EgammaElectronAlgos/interface/ElectronHcalHelper.h"
+#include "DataFormats/RecoCandidate/interface/RecoEcalCandidate.h"
+#include "DataFormats/RecoCandidate/interface/RecoEcalCandidateFwd.h"
+#include "DataFormats/CaloTowers/interface/CaloTower.h"
+#include "DataFormats/CaloTowers/interface/CaloTowerFwd.h"
+
+namespace edm {
+  class ConfigurationDescriptions;
+}
 
 class EgammaTowerIsolation;
 
@@ -23,36 +31,37 @@ class EgammaTowerIsolation;
 //H for H/E = towers behind SC, hcal isolation has these towers excluded
 //a rho correction can be applied
 
-class EgammaHLTBcHcalIsolationProducersRegional : public edm::EDProducer {
+class EgammaHLTBcHcalIsolationProducersRegional : public edm::stream::EDProducer<> {
 public:
   explicit EgammaHLTBcHcalIsolationProducersRegional(const edm::ParameterSet&);
   ~EgammaHLTBcHcalIsolationProducersRegional();
 
+  // non-copiable
+  EgammaHLTBcHcalIsolationProducersRegional(EgammaHLTBcHcalIsolationProducersRegional const &) = delete;
+  EgammaHLTBcHcalIsolationProducersRegional& operator=(EgammaHLTBcHcalIsolationProducersRegional const &) = delete;
 
-private:
-  EgammaHLTBcHcalIsolationProducersRegional(const EgammaHLTBcHcalIsolationProducersRegional& rhs){}
-  EgammaHLTBcHcalIsolationProducersRegional& operator=(const EgammaHLTBcHcalIsolationProducersRegional& rhs){ return *this; }
-  
 public:
-  virtual void produce(edm::Event&, const edm::EventSetup&);
-  
+  virtual void produce(edm::Event&, const edm::EventSetup&) override final;
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
 private:
-  edm::InputTag recoEcalCandidateProducer_;
-  edm::InputTag caloTowerProducer_;
-  edm::InputTag rhoProducer_;
+  const bool  doEtSum_;
+  const double etMin_;
+  const double innerCone_;
+  const double outerCone_;
+  const int   depth_;
+  const bool  useSingleTower_;
 
-  bool doRhoCorrection_;
-  float rhoScale_;
-  float rhoMax_;
-  bool doEtSum_;
-  float etMin_;
-  float innerCone_;
-  float outerCone_;
-  int depth_;
-  float effectiveAreaBarrel_;
-  float effectiveAreaEndcap_;
+  const bool  doRhoCorrection_;
+  const double rhoScale_;
+  const double rhoMax_;
+  const std::vector<double> effectiveAreas_;
+  const std::vector<double> absEtaLowEdges_;
 
-  ElectronHcalHelper::Configuration hcalCfg_;
+  const edm::EDGetTokenT<reco::RecoEcalCandidateCollection> recoEcalCandidateProducer_;
+  const edm::EDGetTokenT<CaloTowerCollection>               caloTowerProducer_;
+  const edm::EDGetTokenT<double>                            rhoProducer_;
+
   ElectronHcalHelper *hcalHelper_;
 };
 

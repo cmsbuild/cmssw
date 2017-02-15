@@ -156,7 +156,7 @@ namespace pos{
     const std::set <PixelModuleName>& moduleList() const {assert(rocAndModuleListsBuilt_); return modules_;}
     const std::set <PixelChannel>& channelList() const {assert( objectsDependingOnTheNameTranslationBuilt_ ); return channels_;}
 
-    std::string mode() const {return mode_;}
+    std::string mode() const override {return mode_;}
 
     bool singleROC() const {return singleROC_;}
 
@@ -172,22 +172,22 @@ namespace pos{
 
     friend std::ostream& pos::operator<<(std::ostream& s, const PixelCalibConfiguration& calib);
 
-    virtual void writeASCII(std::string dir="") const;
-    void 	 writeXML(        pos::PixelConfigKey key, int version, std::string path) const {;}
+    virtual void writeASCII(std::string dir="") const override;
+    void 	 writeXML(        pos::PixelConfigKey key, int version, std::string path) const override{;}
     virtual void writeXMLHeader(  pos::PixelConfigKey key, 
 				  int version, 
 				  std::string path, 
 				  std::ofstream *out,
 				  std::ofstream *out1 = NULL,
 				  std::ofstream *out2 = NULL
-				  ) const ;
+				  ) const override;
     virtual void writeXML(        std::ofstream *out,			                                    
 			   	  std::ofstream *out1 = NULL ,
-			   	  std::ofstream *out2 = NULL ) const ;
+			   	  std::ofstream *out2 = NULL ) const override;
     virtual void writeXMLTrailer( std::ofstream *out, 
 				  std::ofstream *out1 = NULL,
 				  std::ofstream *out2 = NULL
-				  ) const ;
+				  ) const override;
 
 
   private:
@@ -263,16 +263,16 @@ namespace pos{
 		      unsigned int irows, unsigned int icols,
 		      pos::PixelROCMaskBits* masks,
 		      pos::PixelROCTrimBits* trims,	
-		      PixelHdwAddress theROC) const;
+		      const PixelHdwAddress& theROC) const;
 
     void disablePixels(PixelFECConfigInterface* pixelFEC,
 		       unsigned int irows, unsigned int icols,
 		       pos::PixelROCTrimBits* trims,	
-		       PixelHdwAddress theROC) const;
+		       const PixelHdwAddress& theROC) const;
 
     void disablePixels(PixelFECConfigInterface* pixelFEC,
 		       pos::PixelROCTrimBits* trims,	
-		       PixelHdwAddress theROC) const;
+		       const PixelHdwAddress& theROC) const;
 
     mutable std::vector<int> old_irows;
     mutable std::vector<int> old_icols;

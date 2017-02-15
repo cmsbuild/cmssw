@@ -1,11 +1,12 @@
 #ifndef DD_DDsvalues_type_h
 #define DD_DDsvalues_type_h
 
+#include <algorithm>
+#include <map>
 //#include "DetectorDescription/Core/interface/DDAlgoPar.h"
 #include <ostream>
-#include <map>
+#include <utility>
 #include <vector>
-#include <algorithm>
 
 #include "DetectorDescription/Core/interface/DDValue.h"
 
@@ -28,7 +29,7 @@ inline bool operator<(const DDsvalues_Content_type & lh, const DDsvalues_Content
 }
 
 inline DDsvalues_type::const_iterator find( DDsvalues_type::const_iterator begin, DDsvalues_type::const_iterator end, unsigned int id) {
-   static DDValue dummy;
+   static const DDValue dummy;
    DDsvalues_Content_type v(id,dummy);
    DDsvalues_type::const_iterator it = std::lower_bound(begin,end,v);
    if (it!=end && (*it).first==id) return it;

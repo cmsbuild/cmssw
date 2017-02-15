@@ -6,10 +6,9 @@
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
 #include <xercesc/parsers/XercesDOMParser.hpp>
 #include <xercesc/dom/DOM.hpp>
-#include <xercesc/dom/DOMWriter.hpp>
 #include <xercesc/sax/HandlerBase.hpp>
 #include <xercesc/util/XMLString.hpp>
-#include <xercesc/util/PlatformUtils.hpp>
+#include "FWCore/Concurrency/interface/Xerces.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -30,21 +29,21 @@ CalibrationXML::~CalibrationXML()
 if(errHandler) delete errHandler;
 if(parser)  { 
               delete parser;
-              XMLPlatformUtils::Terminate();
+              cms::concurrency::xercesTerminate();
             }
 }
 
 void CalibrationXML::openFile(const std::string & xmlFileName) 
 {
 if(errHandler) delete errHandler;
-if(parser) { delete parser; XMLPlatformUtils::Terminate(); }
+if(parser) { delete parser; cms::concurrency::xercesTerminate(); }
 
  m_xmlFileName = xmlFileName;
 // std::cout << "Opening.." << std::endl;
 	// Initialize the XML4C2 system
 	try
         {
-	        XMLPlatformUtils::Initialize();
+	        cms::concurrency::xercesInitialize();
         }
 	catch(const XMLException& toCatch)
 	{
@@ -94,7 +93,7 @@ abort();
                 n1 = n1->getNextSibling();
         }
 	
-	if(strcmp("Calibration",XMLString::transcode(n1->getNodeName())))
+	if(n1 == nullptr || strcmp("Calibration",XMLString::transcode(n1->getNodeName())))
 abort();
 //FIXME		throw GenTerminate("The root element in the XML Calibration file is not a Calibration element.\n This should be forbidden at the DTD level.");
 	else {   edm::LogInfo("XMLCalibration")  << "Calibration found" ; }	
@@ -108,13 +107,18 @@ abort();
 void CalibrationXML::saveFile(const std::string & xmlFileName)
 {
     DOMImplementation *	theImpl = DOMImplementationRegistry::getDOMImplementation(XMLString::transcode("Core"));
-    DOMWriter         *   theSerializer = ((DOMImplementation*)theImpl)->createDOMWriter();
-    theSerializer->canSetFeature(XMLUni::fgDOMWRTFormatPrettyPrint, true);
+    DOMLSSerializer *   theSerializer = ((DOMImplementation*)theImpl)->createLSSerializer();
+    DOMConfiguration* dc = theSerializer->getDomConfig();
+    dc->setParameter(XMLUni::fgDOMWRTFormatPrettyPrint, true);
+
     XMLFormatTarget* myFormTarget = new LocalFileFormatTarget(XMLString::transcode(xmlFileName.c_str()));
-    theSerializer->writeNode(myFormTarget, *doc);
-     delete myFormTarget;
-	  
+    DOMLSOutput* outputDesc = ((DOMImplementationLS*)theImpl)->createLSOutput();
+    outputDesc->setByteStream(myFormTarget);
+
+    theSerializer->write(doc, outputDesc);
+     delete myFormTarget;	  
 }
+
 DOMElement * CalibrationXML::addChild(DOMNode *dom,const std::string & name)
 { 
 	  DOMNode *n1 = dom;
@@ -125,7 +129,8 @@ DOMElement * CalibrationXML::addChild(DOMNode *dom,const std::string & name)
 	   level++;
 	   indent+="  ";
 	   n1 = n1->getParentNode();
-	  } 
+	  }
+	  assert(dom); 
 	  if(dom->getFirstChild()==0)
              dom->appendChild(dom->getOwnerDocument()->createTextNode(XMLString::transcode(indent.c_str()))); 
          

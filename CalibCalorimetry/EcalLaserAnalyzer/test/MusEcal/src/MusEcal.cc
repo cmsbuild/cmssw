@@ -406,7 +406,7 @@ MusEcal::nextSequence()
   MERunManager* mgr_ = runMgr();
   MusEcal::RunIterator it = mgr_->cur();
   if( it==mgr_->end() ) return false;
-  it++;
+  ++it;
   if( it==mgr_->end() ) return false;
   ME::Time time    = it->first;
   setTime( time );
@@ -637,7 +637,7 @@ MusEcal::histConfig()
       char c;
       if( test )
 	{
-	  ifstream fin(filename);
+	  std::ifstream fin(filename);
 	  fclose( test );
 	  while( (c=fin.peek()) != EOF )
 	    {
@@ -1778,11 +1778,11 @@ void
 MusEcal::writeGlobalHistograms()
 {
   map< TString, TH1* >::iterator it;
-  for( it=_eb_m.begin(); it!=_eb_m.end(); it++ )
+  for( it=_eb_m.begin(); it!=_eb_m.end(); ++it )
     {
       it->second->Write();
     }
-  for( it=_ee_m.begin(); it!=_ee_m.end(); it++ )
+  for( it=_ee_m.begin(); it!=_ee_m.end(); ++it )
     {
       it->second->Write();
     }

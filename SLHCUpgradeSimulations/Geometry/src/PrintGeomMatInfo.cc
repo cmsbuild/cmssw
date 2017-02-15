@@ -29,6 +29,8 @@
 #include <set>
 #include <map>
 
+using namespace CLHEP;
+
 PrintGeomMatInfo::PrintGeomMatInfo(const edm::ParameterSet &p)
 {
     _dumpSummary = p.getUntrackedParameter<bool>("DumpSummary", true);
@@ -111,7 +113,7 @@ void PrintGeomMatInfo::update(const BeginOfJob * job)
 	    std::string sd        = names[i];
 	    DDSpecificsFilter filter;
 	    DDValue           ddv(attribute,sd,0);
-	    filter.setCriteria(ddv,DDSpecificsFilter::equals);
+	    filter.setCriteria(ddv,DDCompOp::equals);
 	    DDFilteredView fv(*pDD);
 	    std::cout << "PrintGeomMatInfo:: Get Filtered view for " 
 		      << attribute << " = " << sd << std::endl;
@@ -470,7 +472,7 @@ void PrintGeomMatInfo::dumpTouch(G4VPhysicalVolume * pv, unsigned int leafDepth,
         out << leafDepth << spaces << "### VOLUME = " << lv->GetName() 
 	    << " Copy No " << pv->GetCopyNo() << " in " << mother
 	    << " global position of centre " << globalpoint << " (r = " 
-	    <<  globalpoint.perp() << ", phi = " <<  globalpoint.phi()/deg
+    <<  globalpoint.perp() << ", phi = " <<  globalpoint.phi()/deg
 	    << ")" << std::endl;
 
     int NoDaughters = lv->GetNoDaughters();

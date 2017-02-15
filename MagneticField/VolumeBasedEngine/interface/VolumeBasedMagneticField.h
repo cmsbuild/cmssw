@@ -5,22 +5,28 @@
  *
  *  Field engine providing interpolation within the full CMS region.
  *
- *  $Date: 2009/05/23 22:21:34 $
- *  $Revision: 1.9 $
  *  \author N. Amapane - CERN
  */
 
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "MagneticField/VolumeBasedEngine/interface/MagGeometry.h"
 
+// Class for testing VolumeBasedMagneticField
+class testMagneticField;
+class testMagGeometryAnalyzer;
+
 class VolumeBasedMagneticField : public MagneticField {
+  // For tests
+  friend class testMagneticField;
+  friend class testMagGeometryAnalyzer;
+
  public:
   //  VolumeBasedMagneticField(const DDCompactView & cpv);
-  VolumeBasedMagneticField( const edm::ParameterSet& config,
-			    std::vector<MagBLayer *> theBLayers,
-			    std::vector<MagESector *> theESectors,
-			    std::vector<MagVolume6Faces*> theBVolumes,
-			    std::vector<MagVolume6Faces*> theEVolumes,
+  VolumeBasedMagneticField( int geomVersion,
+			    const std::vector<MagBLayer *>& theBLayers,
+			    const std::vector<MagESector *>& theESectors,
+			    const std::vector<MagVolume6Faces*>& theBVolumes,
+			    const std::vector<MagVolume6Faces*>& theEVolumes,
 			    float rMax, float zMax,
 			    const MagneticField* param=0,
 			    bool isParamFieldOwned=false);

@@ -20,16 +20,15 @@
 
 // system include files
 #include <array>
+#include <memory>
 #include <string>
 #include <vector>
 #include <map>
-
+#include <atomic>
 
 // user include files
-#include "DataFormats/Provenance/interface/BranchChildren.h"
 #include "DataFormats/Provenance/interface/BranchID.h"
 #include "DataFormats/Provenance/interface/BranchIDList.h"
-#include "DataFormats/Provenance/interface/ParentageID.h"
 #include "DataFormats/Provenance/interface/ModuleDescription.h"
 #include "DataFormats/Provenance/interface/SelectedProducts.h"
 
@@ -39,13 +38,19 @@
 #include "FWCore/Framework/interface/ProductSelector.h"
 #include "FWCore/Framework/interface/EDConsumerBase.h"
 #include "FWCore/Framework/interface/getAllTriggerNames.h"
+#include "FWCore/Framework/interface/SharedResourcesAcquirer.h"
 #include "FWCore/ParameterSet/interface/ParameterSetfwd.h"
+#include "FWCore/Utilities/interface/propagate_const.h"
 
 // forward declarations
 namespace edm {
 
   class ModuleCallingContext;
   class PreallocationConfiguration;
+  class ActivityRegistry;
+  class ProductRegistry;
+  class ThinnedAssociationsHelper;
+
   template <typename T> class OutputModuleCommunicatorT;
   
   namespace maker {
@@ -53,8 +58,6 @@ namespace edm {
   }
 
   namespace one {
-    
-    typedef detail::TriggerResultsBasedEventSelector::handle_t Trig;
     
     class OutputModuleBase : public EDConsumerBase {
     public:
@@ -79,7 +82,7 @@ namespace edm {
       
       bool selected(BranchDescription const& desc) const;
       
-      void selectProducts(ProductRegistry const& preg);
+      void selectProducts(ProductRegistry const& preg, ThinnedAssociationsHelper const&);
       std::string const& processName() const {return process_name_;}
       SelectedProductsForBranchType const& keptProducts() const {return keptProducts_;}
       std::array<bool, NumBranchTypes> const& hasNewlyDroppedBranch() const {return hasNewlyDroppedBranch_;}
@@ -89,28 +92,27 @@ namespace edm {
       static const std::string& baseType();
       static void prevalidate(ConfigurationDescriptions& );
       
-      BranchChildren const& branchChildren() const {return branchChildren_;}
-      
       bool wantAllEvents() const {return wantAllEvents_;}
       
-      BranchIDLists const* branchIDLists() const;
+      BranchIDLists const* branchIDLists();
+
+      ThinnedAssociationsHelper const* thinnedAssociationsHelper() const;
       
       const ModuleDescription& moduleDescription() const {
         return moduleDescription_;
       }
     protected:
       
-      Trig getTriggerResults(EventPrincipal const& ep, ModuleCallingContext const*) const;
-      
       ModuleDescription const& description() const;
       
       ParameterSetID selectorConfig() const { return selector_config_id_; }
 
-      void doPreallocate(PreallocationConfiguration const&) {}
+      void doPreallocate(PreallocationConfiguration const&);
 
       void doBeginJob();
       void doEndJob();
       bool doEvent(EventPrincipal const& ep, EventSetup const& c,
+                   ActivityRegistry*,
                    ModuleCallingContext const*);
       bool doBeginRun(RunPrincipal const& rp, EventSetup const& c,
                       ModuleCallingContext const*);
@@ -130,14 +132,10 @@ namespace edm {
         return droppedBranchIDToKeptBranchID_;
       }
       
-      std::map<BranchID::value_type, BranchID::value_type> const& keptBranchIDToDroppedBranchID() {
-        return keptBranchIDToDroppedBranchID_;
-      }
-      
     private:
       
       int maxEvents_;
-      int remainingEvents_;
+      std::atomic<int> remainingEvents_;
       
       // TODO: Give OutputModule
       // an interface (protected?) that supplies client code with the
@@ -163,7 +161,8 @@ namespace edm {
       ModuleDescription moduleDescription_;
       
       bool wantAllEvents_;
-      mutable detail::TriggerResultsBasedEventSelector selectors_;
+      std::vector<detail::TriggerResultsBasedEventSelector> selectors_;
+      ParameterSet selectEvents_;
       // ID of the ParameterSet that configured the event selector
       // subsystem.
       ParameterSetID selector_config_id_;
@@ -171,18 +170,21 @@ namespace edm {
       // needed because of possible EDAliases.
       // filled in only if key and value are different.
       std::map<BranchID::value_type, BranchID::value_type> droppedBranchIDToKeptBranchID_;
-      std::map<BranchID::value_type, BranchID::value_type> keptBranchIDToDroppedBranchID_;
-      std::unique_ptr<BranchIDLists> branchIDLists_;
+      edm::propagate_const<std::unique_ptr<BranchIDLists>> branchIDLists_;
       BranchIDLists const* origBranchIDLists_;
-      
-      typedef std::map<BranchID, std::set<ParentageID> > BranchParents;
-      BranchParents branchParents_;
-      
-      BranchChildren branchChildren_;
-      
+
+
+      edm::propagate_const<std::unique_ptr<ThinnedAssociationsHelper>> thinnedAssociationsHelper_;
+      std::map<BranchID, bool> keepAssociation_;
+
+      SharedResourcesAcquirer resourcesAcquirer_;
+
       //------------------------------------------------------------------
       // private member functions
       //------------------------------------------------------------------
+      
+      virtual SharedResourcesAcquirer createAcquirer();
+      
       void doWriteRun(RunPrincipal const& rp, ModuleCallingContext const*);
       void doWriteLuminosityBlock(LuminosityBlockPrincipal const& lbp, ModuleCallingContext const*);
       void doOpenFile(FileBlock const& fb);
@@ -190,8 +192,14 @@ namespace edm {
       void doRespondToCloseInputFile(FileBlock const& fb);
       void doPreForkReleaseResources();
       void doPostForkReacquireResources(unsigned int iChildIndex, unsigned int iNumberOfChildren);
-      
+      void doRegisterThinnedAssociations(ProductRegistry const&,
+                                         ThinnedAssociationsHelper&) { }
+
       std::string workerType() const {return "WorkerT<edm::one::OutputModuleBase>";}
+      
+      SharedResourcesAcquirer& sharedResourcesAcquirer() {
+        return resourcesAcquirer_;
+      }
       
       /// Tell the OutputModule that is must end the current file.
       void doCloseFile();
@@ -202,6 +210,7 @@ namespace edm {
       
       void registerProductsAndCallbacks(OutputModuleBase const*, ProductRegistry const*) {}
 
+      bool prePrefetchSelection(StreamID id, EventPrincipal const&, ModuleCallingContext const*);
       
       // Do the end-of-file tasks; this is only called internally, after
       // the appropriate tests have been done.
@@ -211,29 +220,32 @@ namespace edm {
       /// Ask the OutputModule if we should end the current file.
       virtual bool shouldWeCloseFile() const {return false;}
       
-      virtual void write(EventPrincipal const& e, ModuleCallingContext const*) = 0;
+      virtual void write(EventForOutput const&) = 0;
       virtual void beginJob(){}
       virtual void endJob(){}
-      virtual void writeLuminosityBlock(LuminosityBlockPrincipal const&, ModuleCallingContext const*) = 0;
-      virtual void writeRun(RunPrincipal const&, ModuleCallingContext const*) = 0;
+      virtual void writeLuminosityBlock(LuminosityBlockForOutput const&) = 0;
+      virtual void writeRun(RunForOutput const&) = 0;
       virtual void openFile(FileBlock const&) {}
       virtual bool isFileOpen() const { return true; }
       virtual void reallyOpenFile() {}
       
+      virtual void preForkReleaseResources();
+      virtual void postForkReacquireResources(unsigned int /*iChildIndex*/, unsigned int /*iNumberOfChildren*/);
 
-      virtual void doBeginRun_(RunPrincipal const&, ModuleCallingContext const*){}
-      virtual void doEndRun_(RunPrincipal const&, ModuleCallingContext const*){}
-      virtual void doBeginLuminosityBlock_(LuminosityBlockPrincipal const&, ModuleCallingContext const*){}
-      virtual void doEndLuminosityBlock_(LuminosityBlockPrincipal const&, ModuleCallingContext const*){}
+      virtual void doBeginRun_(RunForOutput const&){}
+      virtual void doEndRun_(RunForOutput const& ){}
+      virtual void doBeginLuminosityBlock_(LuminosityBlockForOutput const&){}
+      virtual void doEndLuminosityBlock_(LuminosityBlockForOutput const&){}
       virtual void doRespondToOpenInputFile_(FileBlock const&) {}
       virtual void doRespondToCloseInputFile_(FileBlock const&) {}
       
+      void keepThisBranch(BranchDescription const& desc,
+                          std::map<BranchID, BranchDescription const*>& trueBranchIDToKeptBranchDesc,
+                          std::set<BranchID>& keptProductsInEvent);
+
       void setModuleDescription(ModuleDescription const& md) {
         moduleDescription_ = md;
       }
-      
-      void updateBranchParents(EventPrincipal const& ep);
-      void fillDependencyGraph();
       
       bool limitReached() const {return remainingEvents_ == 0;}
     };

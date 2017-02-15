@@ -32,12 +32,12 @@ class AlcaBeamMonitor : public edm::EDAnalyzer {
 
  protected:
 
-  void beginJob 	   (void);
-  void beginRun 	   (const edm::Run& iRun,  	       const edm::EventSetup& iSetup);
-  void analyze  	   (const edm::Event& iEvent, 	       const edm::EventSetup& iSetup);
-  void beginLuminosityBlock(const edm::LuminosityBlock& iLumi, const edm::EventSetup& iSetup);
-  void endLuminosityBlock  (const edm::LuminosityBlock& iLumi, const edm::EventSetup& iSetup);
-  void endRun		   (const edm::Run& iRun,              const edm::EventSetup& iSetup);
+  void beginJob 	   (void) override;
+  void beginRun 	   (const edm::Run& iRun,  	       const edm::EventSetup& iSetup) override;
+  void analyze  	   (const edm::Event& iEvent, 	       const edm::EventSetup& iSetup) override;
+  void beginLuminosityBlock(const edm::LuminosityBlock& iLumi, const edm::EventSetup& iSetup) override;
+  void endLuminosityBlock  (const edm::LuminosityBlock& iLumi, const edm::EventSetup& iSetup) override;
+  void endRun		   (const edm::Run& iRun,              const edm::EventSetup& iSetup) override;
   void endJob		   (const edm::LuminosityBlock& iLumi, const edm::EventSetup& iSetup);
   
  private:
@@ -52,10 +52,10 @@ class AlcaBeamMonitor : public edm::EDAnalyzer {
   //Parameters
   edm::ParameterSet parameters_;
   std::string       monitorName_;
-  edm::InputTag     primaryVertexLabel_;
+  edm::EDGetTokenT<reco::VertexCollection> primaryVertexLabel_;
+  edm::EDGetTokenT<reco::TrackCollection>  trackLabel_;
+  edm::EDGetTokenT<reco::BeamSpot>         scalerLabel_;
   edm::InputTag     beamSpotLabel_;
-  edm::InputTag     trackLabel_;
-  edm::InputTag     scalerLabel_;
 
   //Service variables
   int         numberOfValuesToSave_;
@@ -80,3 +80,8 @@ class AlcaBeamMonitor : public edm::EDAnalyzer {
 
 #endif
 
+
+// Local Variables:
+// show-trailing-whitespace: t
+// truncate-lines: t
+// End:

@@ -10,7 +10,6 @@
 //
 // Author:      Christophe Saout
 // Created:     Sat Apr 24 15:18 CEST 2007
-// $Id: ProcForeach.cc,v 1.2 2007/07/15 22:31:46 saout Exp $
 //
 
 #include <algorithm>
@@ -45,6 +44,7 @@ class ProcForeach : public VarProcessor {
 				ValueIterator iter, unsigned int n) const override;
 	virtual LoopStatus loop(double *output, int *conf,
 	                        unsigned int nOutput,
+                                LoopCtx& ctx,
 	                        unsigned int &nOffset) const override;
 
     private:
@@ -56,12 +56,6 @@ class ProcForeach : public VarProcessor {
 		unsigned int origin;
 		unsigned int count;
 	};
-
-	inline void reset() const { index = offset = size = 0; }
-
-	mutable unsigned int	index;
-	mutable unsigned int	offset;
-	mutable unsigned int	size;
 
 	unsigned int		count;
 };
@@ -78,7 +72,6 @@ ProcForeach::ProcForeach(const char *name,
 
 void ProcForeach::configure(ConfIterator iter, unsigned int n)
 {
-	reset();
 	iter << Variable::FLAG_NONE;
 	while(iter)
 		iter << iter++(Variable::FLAG_MULTIPLE);
@@ -105,12 +98,14 @@ ProcForeach::configureLoop(ConfigCtx::Context *ctx_, ConfigCtx::iterator begin,
 
 void ProcForeach::eval(ValueIterator iter, unsigned int n) const
 {
+        auto const offset = iter.loopCtx().offset();
 	iter(offset);
 
+        auto& loopSize = iter.loopCtx().size();
 	while(iter) {
 		unsigned int size = iter.size();
-		if (!this->size)
-			this->size = size;
+		if (!loopSize)
+			loopSize = size;
 
 		double value = iter[offset];
 		iter(value);
@@ -121,6 +116,7 @@ void ProcForeach::eval(ValueIterator iter, unsigned int n) const
 std::vector<double> ProcForeach::deriv(
 				ValueIterator iter, unsigned int n) const
 {
+        auto const offset = iter.loopCtx().offset();
 	std::vector<unsigned int> offsets;
 	unsigned int in = 0, out = 0;
 	while(iter) {
@@ -138,13 +134,16 @@ std::vector<double> ProcForeach::deriv(
 
 VarProcessor::LoopStatus
 ProcForeach::loop(double *output, int *conf,
-                  unsigned int nOutput, unsigned int &nOffset) const
+                  unsigned int nOutput, LoopCtx& ctx, unsigned int &nOffset) const
 {
+        auto& index = ctx.index();
 	bool endIteration = false;
 	if (index++ == count) {
 		index = 0;
 		endIteration = true;
 	}
+        auto& offset = ctx.offset();
+        auto& size = ctx.size();
 
 	if (offset == 0 && !endIteration) {
 		for(int cur = *conf + size; nOutput--; cur += size)
@@ -153,7 +152,6 @@ ProcForeach::loop(double *output, int *conf,
 
 	if (endIteration) {
 		if (++offset >= size) {
-			reset();
 			return kStop;
 		} else
 			return kReset;

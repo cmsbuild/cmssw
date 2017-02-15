@@ -18,7 +18,7 @@
 
 class CSCDetId;
 
-class CSCSegment GCC11_FINAL : public RecSegment {
+class CSCSegment final : public RecSegment {
 
 public:
 
@@ -27,7 +27,7 @@ public:
 	
     /// Constructor
     CSCSegment(const std::vector<const CSCRecHit2D*>& proto_segment, LocalPoint origin, 
-        	LocalVector direction, AlgebraicSymMatrix errors, double chi2);
+        	LocalVector direction, const AlgebraicSymMatrix& errors, double chi2);
   
     /// Destructor
     virtual ~CSCSegment();

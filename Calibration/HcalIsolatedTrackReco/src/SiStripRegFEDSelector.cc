@@ -2,16 +2,15 @@
 #include "Calibration/HcalIsolatedTrackReco/interface/SiStripRegFEDSelector.h"
 #include "CalibTracker/Records/interface/SiStripRegionCablingRcd.h"
 #include "CondFormats/SiStripObjects/interface/FedChannelConnection.h"
-#include "DataFormats/HLTReco/interface/TriggerFilterObjectWithRefs.h"
 #include "DataFormats/HcalIsolatedTrack/interface/IsolatedPixelTrackCandidate.h"
 #include "DataFormats/HcalIsolatedTrack/interface/IsolatedPixelTrackCandidateFwd.h"
 
 SiStripRegFEDSelector::SiStripRegFEDSelector(const edm::ParameterSet& iConfig)
 {
-  seedLabel_=iConfig.getParameter<edm::InputTag>("regSeedLabel");
+  tok_seed_ = consumes<trigger::TriggerFilterObjectWithRefs>(iConfig.getParameter<edm::InputTag>("regSeedLabel"));
   delta_=iConfig.getParameter<double>("delta");
   
-  rawInLabel_=iConfig.getParameter<edm::InputTag>("rawInputLabel");
+  tok_raw_ = consumes<FEDRawDataCollection>(iConfig.getParameter<edm::InputTag>("rawInputLabel"));
 
   produces<FEDRawDataCollection>();
 }
@@ -25,16 +24,16 @@ SiStripRegFEDSelector::~SiStripRegFEDSelector()
 void
 SiStripRegFEDSelector::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-  std::auto_ptr<FEDRawDataCollection> producedData(new FEDRawDataCollection);
+  auto producedData = std::make_unique<FEDRawDataCollection>();
 
   edm::Handle<trigger::TriggerFilterObjectWithRefs> trigSeedTrks;
-  iEvent.getByLabel(seedLabel_,trigSeedTrks);
+  iEvent.getByToken(tok_seed_,trigSeedTrks);
   
   std::vector< edm::Ref<reco::IsolatedPixelTrackCandidateCollection> > isoPixTrackRefs;
   trigSeedTrks->getObjects(trigger::TriggerTrack, isoPixTrackRefs);
  
   edm::Handle<FEDRawDataCollection> rawIn;
-  iEvent.getByLabel(rawInLabel_,rawIn);
+  iEvent.getByToken(tok_raw_,rawIn);
   
   iSetup.get<SiStripRegionCablingRcd>().get(strip_cabling);
   
@@ -138,7 +137,7 @@ SiStripRegFEDSelector::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	}
     }
   
-  iEvent.put(producedData);  
+  iEvent.put(std::move(producedData));
   
 }
 

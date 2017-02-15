@@ -4,8 +4,6 @@
 /** \class SmartPropagatorESProducer
  *  ES producer needed to put the SmartPropagator inside the EventSetup
  *
- *  $Date: 2006/11/23 11:48:36 $
- *  $Revision: 1.1 $
  *  \author R. Bellan - INFN Torino <riccardo.bellan@cern.ch>
  */
 
@@ -14,7 +12,7 @@
 #include "TrackingTools/GeomPropagators/interface/SmartPropagator.h"
 #include "DataFormats/TrajectorySeed/interface/PropagationDirection.h"
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
   
 
 namespace edm {class ParameterSet;}
@@ -32,10 +30,10 @@ class  SmartPropagatorESProducer: public edm::ESProducer{
   virtual ~SmartPropagatorESProducer(); 
   
   // Operations
-  boost::shared_ptr<Propagator> produce(const TrackingComponentsRecord &);
+  std::shared_ptr<Propagator> produce(const TrackingComponentsRecord &);
   
  private:
-  boost::shared_ptr<Propagator> thePropagator;
+  std::shared_ptr<Propagator> thePropagator;
   PropagationDirection thePropagationDirection;
   std::string theTrackerPropagatorName;
   std::string theMuonPropagatorName;

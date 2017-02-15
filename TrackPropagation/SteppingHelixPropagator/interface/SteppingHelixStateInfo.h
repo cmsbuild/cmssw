@@ -6,15 +6,12 @@
 /** \class SteppingHelixStateInfo
  *  Holder of SteppingHelixState information
  *
- *  $Date: 2009/09/08 19:20:24 $
- *  $Revision: 1.15.2.2 $
  *  \author Vyacheslav Krutelyov (slava77)
  */
 
 //
 // Original Author:  Vyacheslav Krutelyov
 //         Created:  Wed Jan  3 16:01:24 CST 2007
-// $Id: SteppingHelixStateInfo.h,v 1.15.2.2 2009/09/08 19:20:24 slava77 Exp $
 //
 //
 
@@ -53,7 +50,7 @@ class SteppingHelixStateInfo {
   static const std::string ResultName[MAX_RESULT];
 
   SteppingHelixStateInfo(): 
-    path_(0), radPath_(0), dir(0), magVol(0), field(0), dEdx(0), dEdXPrime(0), radX0(1e12),
+    path_(0), radPath_(0), dir(0), magVol(0), isYokeVol(false), field(0), dEdx(0), dEdXPrime(0), radX0(1e12),
     isComplete(0), isValid_(0), hasErrorPropagated_(0), status_(UNDEFINED) {}
   SteppingHelixStateInfo(const FreeTrajectoryState& fts);
 

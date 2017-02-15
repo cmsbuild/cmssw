@@ -16,7 +16,6 @@
 //
 // Original Author:  Christian Veelken, UC Davis
 //         Created:  Thu Nov  2 13:47:40 CST 2006
-// $Id: IntegrandThetaFunction.cc,v 1.2 2007/05/28 09:59:50 llista Exp $
 //
 //
 
@@ -96,7 +95,7 @@ void IntegrandThetaFunction::SetParameterAlpha(double alpha)
   alpha_ = alpha;
 }
 
-void IntegrandThetaFunction::SetParameters(double* param)
+void IntegrandThetaFunction::SetParameters(const double* param)
 {
   theta0_ = param[0];
   phi0_ = param[1];

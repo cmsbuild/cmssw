@@ -1,7 +1,6 @@
 #ifndef MuonAnalysis_MuonAssociators_interface_PropagateToMuon_h
 #define MuonAnalysis_MuonAssociators_interface_PropagateToMuon_h
 //
-// $Id: PropagateToMuon.h,v 1.3 2010/07/01 07:41:09 gpetrucc Exp $
 //
 
 /**
@@ -70,6 +69,8 @@ class PropagateToMuon {
 
         /// for cosmics, some things change: the along-opposite is not in-out, nor the innermost/outermost states are in-out really
         bool cosmicPropagation_;
+
+	bool useMB2InOverlap_;
 
         // needed services for track propagation
         edm::ESHandle<MagneticField> magfield_;

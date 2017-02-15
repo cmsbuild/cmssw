@@ -23,10 +23,13 @@
 #include "CalibCalorimetry/EcalTPGTools/interface/EcalTPGScale.h"
 #include "CalibCalorimetry/EcalLaserCorrection/interface/EcalLaserDbService.h"
 #include "CalibCalorimetry/EcalTPGTools/interface/EcalTPGScale.h"
+#include "DataFormats/EcalDigi/interface/EcalDigiCollections.h"
+
+#include "RecoLocalCalo/EcalDeadChannelRecoveryAlgos/interface/EcalDeadChannelRecoveryAlgos.h"
 
 class EcalRecHitWorkerRecover : public EcalRecHitWorkerBaseClass {
         public: 
-                EcalRecHitWorkerRecover(const edm::ParameterSet&);
+                EcalRecHitWorkerRecover(const edm::ParameterSet&, edm::ConsumesCollector& c);
                 virtual ~EcalRecHitWorkerRecover() {};
 
                 void set(const edm::EventSetup& es);
@@ -69,7 +72,7 @@ class EcalRecHitWorkerRecover : public EcalRecHitWorkerBaseClass {
 
                 // dead FE
                 EcalTPGScale ecalScale_;
-                edm::InputTag tpDigiCollection_;
+                edm::EDGetTokenT<EcalTrigPrimDigiCollection> tpDigiToken_;
                 edm::ESHandle< EcalElectronicsMapping > pEcalMapping_;
                 const EcalElectronicsMapping *ecalMapping_;
 		double logWarningEtThreshold_EB_FE_;
@@ -78,17 +81,19 @@ class EcalRecHitWorkerRecover : public EcalRecHitWorkerBaseClass {
                 edm::ESHandle<EcalTrigTowerConstituentsMap> ttMap_;
  
                 edm::ESHandle<CaloSubdetectorGeometry> pEBGeom_;
-                edm::ESHandle<CaloSubdetectorGeometry> pEEGeom_;
                 const CaloSubdetectorGeometry * ebGeom_;
-                const CaloSubdetectorGeometry * eeGeom_;
 		const CaloGeometry* geo_;
 
-                EcalRecHitSimpleAlgo * rechitMaker_;
+                std::unique_ptr<EcalRecHitSimpleAlgo> rechitMaker_;
 
                 std::set<DetId> recoveredDetIds_EB_;
                 std::set<DetId> recoveredDetIds_EE_;
 
 		EcalTPGScale tpgscale_;
+
+	EcalDeadChannelRecoveryAlgos<EBDetId> ebDeadChannelCorrector;
+	EcalDeadChannelRecoveryAlgos<EEDetId> eeDeadChannelCorrector;
+
 };
 
 #endif

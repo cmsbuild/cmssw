@@ -63,6 +63,7 @@ SiPixelCalibDigiProducer::SiPixelCalibDigiProducer(const edm::ParameterSet& iCon
   use_realeventnumber_(iConfig.getParameter<bool>("useRealEventNumber"))
 
 {
+  tPixelDigi = consumes<edm::DetSetVector<PixelDigi>> (src_);
    //register your products
   produces< edm::DetSetVector<SiPixelCalibDigi> >();
   if(includeErrors_)
@@ -111,7 +112,7 @@ SiPixelCalibDigiProducer::fill(edm::Event& iEvent, const edm::EventSetup& iSetup
   // figure out which calibration point we're on now..
   short icalibpoint = calib_->vcalIndexForEvent(iEventCounter_);
   edm::Handle< edm::DetSetVector<PixelDigi> > pixelDigis;
-  iEvent.getByLabel( src_, pixelDigis );
+  iEvent.getByToken( tPixelDigi, pixelDigis );
   
   edm::LogInfo("SiPixelCalibProducer") << "in fill(), calibpoint " << icalibpoint <<" ndigis " << pixelDigis->size() <<  std::endl;
     // loop over the data and store things
@@ -212,7 +213,7 @@ SiPixelCalibDigiProducer::clear(){
 void 
 SiPixelCalibDigiProducer::setPattern(){
   //  edm::LogInfo("SiPixelCalibProducer") << "in setPattern()" << std::endl;
-  uint32_t patternnumber = abs(iEventCounter_-1)/pattern_repeat_;
+  uint32_t patternnumber = (iEventCounter_-1)/pattern_repeat_;
   uint32_t rowpatternnumber = patternnumber/calib_->nColumnPatterns();
   uint32_t colpatternnumber = patternnumber%calib_->nColumnPatterns();
   edm::LogInfo("SiPixelCalibDigiProducer") << " rowpatternnumbers = " << rowpatternnumber << " " << colpatternnumber << " " << patternnumber << std::endl;
@@ -286,8 +287,8 @@ SiPixelCalibDigiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
   //  edm::LogInfo("SiPixelCalibDigiProducer") << "now starting fill..." << std::endl;
   fill(iEvent,iSetup); // fill method where the actual looping over the digis is done.
   //  edm::LogInfo("SiPixelCalibDigiProducer") << "done filling..." << std::endl;
-  std::auto_ptr<edm::DetSetVector<SiPixelCalibDigi> > pOut(new edm::DetSetVector<SiPixelCalibDigi>);
-  std::auto_ptr<edm::DetSetVector<SiPixelCalibDigiError> > pErr (new edm::DetSetVector<SiPixelCalibDigiError> );
+  auto pOut = std::make_unique<edm::DetSetVector<SiPixelCalibDigi>>();
+  auto pErr = std::make_unique<edm::DetSetVector<SiPixelCalibDigiError>>();
   
   // copy things over into pOut if necessary (this is only once per pattern)
   if(store()){
@@ -315,9 +316,9 @@ SiPixelCalibDigiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
     edm::LogInfo("INFO") << "now filling event " << iEventCounter_ << " as pixel pattern changes every " <<  pattern_repeat_ << " events..." << std::endl;
     clear();
   }
-  iEvent.put(pOut);
+  iEvent.put(std::move(pOut));
   if(includeErrors_)
-    iEvent.put(pErr);
+    iEvent.put(std::move(pErr));
 }
 //-----------------------------------------------
 //  method to check that the pixels are actually valid...

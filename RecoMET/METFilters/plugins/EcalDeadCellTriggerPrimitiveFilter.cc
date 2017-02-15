@@ -2,12 +2,12 @@
 //
 // Package:    EcalDeadCellTriggerPrimitiveFilter
 // Class:      EcalDeadCellTriggerPrimitiveFilter
-// 
+//
 /**\class EcalDeadCellTriggerPrimitiveFilter EcalDeadCellTriggerPrimitiveFilter.cc
 
  Description: <one line class summary>
  Event filtering for anomalous ECAL events where the energy measured by ECAL is significantly biased due to energy depositions
- in dead cell regions. 
+ in dead cell regions.
 */
 //
 // Original Author:  Hongxuan Liu and Kenichi Hatakeyama
@@ -64,6 +64,8 @@
 #include "Geometry/CaloTopology/interface/CaloTowerConstituentsMap.h"
 #include "DataFormats/CaloTowers/interface/CaloTowerDetId.h"
 
+#include "DataFormats/Provenance/interface/RunLumiEventNumber.h"
+
 #include "TFile.h"
 #include "TTree.h"
 
@@ -99,6 +101,8 @@ private:
 
   const edm::InputTag ebReducedRecHitCollection_;
   const edm::InputTag eeReducedRecHitCollection_;
+  edm::EDGetTokenT<EcalRecHitCollection> ebReducedRecHitCollectionToken_;
+  edm::EDGetTokenT<EcalRecHitCollection> eeReducedRecHitCollectionToken_;
   edm::Handle<EcalRecHitCollection> barrelReducedRecHitsHandle;
   edm::Handle<EcalRecHitCollection> endcapReducedRecHitsHandle;
 
@@ -124,6 +128,7 @@ private:
   const double etValToBeFlagged_;
 
   const edm::InputTag tpDigiCollection_;
+  edm::EDGetTokenT<EcalTrigPrimDigiCollection> tpDigiCollectionToken_;
   edm::Handle<EcalTrigPrimDigiCollection> pTPDigis;
 
 // chnStatus > 0, then exclusive, i.e., only consider status == chnStatus
@@ -135,6 +140,10 @@ private:
 
   const bool makeProfileRoot_;
   const std::string profileRootName_;
+
+  const bool useTTsum_; //If set to true, the filter will compare the sum of the 5x5 tower to the provided energy threshold
+  const bool usekTPSaturated_; //If set to true, the filter will check the kTPSaturated flag
+
   TFile *profFile;
   TTree *profTree;
 
@@ -142,7 +151,9 @@ private:
   std::vector<std::string> *cutFlowStrTmpPtr;
 
   void loadEventInfo(const edm::Event& iEvent, const edm::EventSetup& iSetup);
-  unsigned int run, event, ls;
+  edm::RunNumber_t run;
+  edm::EventNumber_t event;
+  edm::LuminosityBlockNumber_t ls;
 
   bool getEventInfoForFilterOnce_;
 
@@ -173,20 +184,25 @@ private:
 // constructors and destructor
 //
 EcalDeadCellTriggerPrimitiveFilter::EcalDeadCellTriggerPrimitiveFilter(const edm::ParameterSet& iConfig)
-  : taggingMode_ (iConfig.getParameter<bool>("taggingMode") ) 
+  : taggingMode_ (iConfig.getParameter<bool>("taggingMode") )
   , debug_ (iConfig.getParameter<bool>("debug") )
   , verbose_ (iConfig.getParameter<int>("verbose") )
   , doEEfilter_ (iConfig.getUntrackedParameter<bool>("doEEfilter") )
   , ebReducedRecHitCollection_ (iConfig.getParameter<edm::InputTag>("ebReducedRecHitCollection") )
   , eeReducedRecHitCollection_ (iConfig.getParameter<edm::InputTag>("eeReducedRecHitCollection") )
+  , ebReducedRecHitCollectionToken_ (consumes<EcalRecHitCollection>(ebReducedRecHitCollection_))
+  , eeReducedRecHitCollectionToken_ (consumes<EcalRecHitCollection>(eeReducedRecHitCollection_))
   , maskedEcalChannelStatusThreshold_ (iConfig.getParameter<int>("maskedEcalChannelStatusThreshold") )
   , etValToBeFlagged_ (iConfig.getParameter<double>("etValToBeFlagged") )
   , tpDigiCollection_ (iConfig.getParameter<edm::InputTag>("tpDigiCollection") )
+  , tpDigiCollectionToken_(consumes<EcalTrigPrimDigiCollection>(tpDigiCollection_))
   , makeProfileRoot_ (iConfig.getUntrackedParameter<bool>("makeProfileRoot") )
   , profileRootName_ (iConfig.getUntrackedParameter<std::string>("profileRootName") )
+  , useTTsum_ (iConfig.getParameter<bool>("useTTsum") )
+  , usekTPSaturated_ (iConfig.getParameter<bool>("usekTPSaturated") )
 {
   getEventInfoForFilterOnce_ = false;
-  hastpDigiCollection_ = 0; hasReducedRecHits_ = 0; 
+  hastpDigiCollection_ = 0; hasReducedRecHits_ = 0;
   useTPmethod_ = true; useHITmethod_ = false;
 
   if( makeProfileRoot_ ){
@@ -218,11 +234,11 @@ EcalDeadCellTriggerPrimitiveFilter::~EcalDeadCellTriggerPrimitiveFilter() {
 
 void EcalDeadCellTriggerPrimitiveFilter::loadEventInfoForFilter(const edm::Event &iEvent){
 
-  std::vector<edm::Provenance const*> provenances;
-  iEvent.getAllProvenance(provenances);
+  std::vector<edm::StableProvenance const*> provenances;
+  iEvent.getAllStableProvenance(provenances);
   const unsigned int nProvenance = provenances.size();
   for (unsigned int ip = 0; ip < nProvenance; ip++) {
-    const edm::Provenance& provenance = *( provenances[ip] );
+    const edm::StableProvenance& provenance = *( provenances[ip] );
     if( provenance.moduleLabel().data() ==  tpDigiCollection_.label() ){ hastpDigiCollection_ = 1; }
     if( provenance.moduleLabel().data() == ebReducedRecHitCollection_.label() || provenance.moduleLabel().data() == eeReducedRecHitCollection_.label() ){
        hasReducedRecHits_++;
@@ -241,14 +257,14 @@ void EcalDeadCellTriggerPrimitiveFilter::loadEventInfoForFilter(const edm::Event
   int majorV = TString(split->At(1)->GetName()).Atoi();
   int minorV = TString(split->At(2)->GetName()).Atoi();
 
-  if( debug_ ) std::cout<<"processName : "<<history[nHist-2].processName().data()<<"  releaseVersion : "<<releaseVersion_<<std::endl; 
+  if( debug_ ) std::cout<<"processName : "<<history[nHist-2].processName().data()<<"  releaseVersion : "<<releaseVersion_<<std::endl;
 
 // If TP is available, always use TP.
 // In RECO file, we always have ecalTPSkim (at least from 38X for data and 39X for MC).
 // In AOD file, we can only have recovered rechits in the reduced rechits collection after 42X
 // Do NOT expect end-users provide ecalTPSkim or recovered rechits themselves!!
 // If they really can provide them, they must be experts to modify this code to suit their own purpose :-)
-  if( !hastpDigiCollection_ && !hasReducedRecHits_ ){ useTPmethod_ = false; useHITmethod_ = false; 
+  if( !hastpDigiCollection_ && !hasReducedRecHits_ ){ useTPmethod_ = false; useHITmethod_ = false;
      if( debug_ ){
         std::cout<<"\nWARNING ... Cannot find either tpDigiCollection_ or reducedRecHitCollecion_ ?!"<<std::endl;
         std::cout<<"  Will NOT DO ANY FILTERING !"<<std::endl;
@@ -257,7 +273,7 @@ void EcalDeadCellTriggerPrimitiveFilter::loadEventInfoForFilter(const edm::Event
   else if( hastpDigiCollection_ ){ useTPmethod_ = true; useHITmethod_ = false; }
 //  else if( majorV >=4 && minorV >=2 ){ useTPmethod_ = false; useHITmethod_ = true; }
   else if( majorV >=5 || (majorV==4 && minorV >=2) ){ useTPmethod_ = false; useHITmethod_ = true; }
-  else{ useTPmethod_ = false; useHITmethod_ = false; 
+  else{ useTPmethod_ = false; useHITmethod_ = false;
      if( debug_ ){
         std::cout<<"\nWARNING ... TP filter can ONLY be used in AOD after 42X"<<std::endl;
         std::cout<<"  Will NOT DO ANY FILTERING !"<<std::endl;
@@ -267,7 +283,7 @@ void EcalDeadCellTriggerPrimitiveFilter::loadEventInfoForFilter(const edm::Event
   if( debug_ ) std::cout<<"useTPmethod_ : "<<useTPmethod_<<"  useHITmethod_ : "<<useHITmethod_<<std::endl;
 
   getEventInfoForFilterOnce_ = true;
- 
+
 }
 
 
@@ -280,15 +296,15 @@ void EcalDeadCellTriggerPrimitiveFilter::loadEventInfo(const edm::Event& iEvent,
 
 void EcalDeadCellTriggerPrimitiveFilter::loadEcalDigis(edm::Event& iEvent, const edm::EventSetup& iSetup){
 
-  iEvent.getByLabel(tpDigiCollection_, pTPDigis);
+  iEvent.getByToken(tpDigiCollectionToken_, pTPDigis);
   if ( !pTPDigis.isValid() ) { edm::LogWarning("EcalDeadCellTriggerPrimitiveFilter") << "Can't get the product " << tpDigiCollection_.instance()
                                              << " with label " << tpDigiCollection_.label(); return; }
 }
 
 void EcalDeadCellTriggerPrimitiveFilter::loadEcalRecHits(edm::Event& iEvent, const edm::EventSetup& iSetup){
 
-  iEvent.getByLabel(ebReducedRecHitCollection_,barrelReducedRecHitsHandle);
-  iEvent.getByLabel(eeReducedRecHitCollection_,endcapReducedRecHitsHandle);
+  iEvent.getByToken(ebReducedRecHitCollectionToken_,barrelReducedRecHitsHandle);
+  iEvent.getByToken(eeReducedRecHitCollectionToken_,endcapReducedRecHitsHandle);
 
 }
 
@@ -350,11 +366,10 @@ bool EcalDeadCellTriggerPrimitiveFilter::filter(edm::Event& iEvent, const edm::E
 
   if(debug_ && verbose_ >=2){
      int evtstatusABS = abs(evtTagged);
-     printf("\nrun : %8d  event : %10d  lumi : %4d  evtTPstatus  ABS : %d  13 : % 2d\n", run, event, ls, evtstatusABS, evtTagged);
+     printf("\nrun : %8u  event : %10llu  lumi : %4u  evtTPstatus  ABS : %d  13 : % 2d\n", run, event, ls, evtstatusABS, evtTagged);
   }
 
-  std::auto_ptr<bool> pOut( new bool(pass) ); 
-  iEvent.put( pOut );
+  iEvent.put(std::make_unique<bool>(pass));
 
   if (taggingMode_) return true;
   else return pass;
@@ -381,23 +396,24 @@ void EcalDeadCellTriggerPrimitiveFilter::beginRun(const edm::Run &run, const edm
 }
 
 int EcalDeadCellTriggerPrimitiveFilter::setEvtRecHitstatus(const double &tpValCut, const int &chnStatus, const int &towerTest){
-        
+
   if( debug_ && verbose_ >=2) std::cout<<"***begin setEvtTPstatusRecHits***"<<std::endl;
-        
+
   accuTTetMap.clear(); accuTTchnMap.clear(); TTzsideMap.clear();
   accuSCetMap.clear(); accuSCchnMap.clear(); SCzsideMap.clear();
   avoidDuplicateVec.clear();
-        
-/*         
+
+/*
   const EBRecHitCollection HitecalEB = *(barrelRecHitsHandle.product());
   const EERecHitCollection HitecalEE = *(endcapRecHitsHandle.product());
-*/         
+*/
   const EBRecHitCollection HitecalEB = *(barrelReducedRecHitsHandle.product());
   const EERecHitCollection HitecalEE = *(endcapReducedRecHitsHandle.product());
 
   int isPassCut =0;
 
   EBRecHitCollection::const_iterator ebrechit;
+
   for (ebrechit = HitecalEB.begin(); ebrechit != HitecalEB.end(); ebrechit++) {
 
      EBDetId det = ebrechit->id();
@@ -418,12 +434,17 @@ int EcalDeadCellTriggerPrimitiveFilter::setEvtRecHitstatus(const double &tpValCu
      bool toDo = false;
      if( chnStatus >0 && status == chnStatus ) toDo = true;
      if( chnStatus <0 && status >= abs(chnStatus) ) toDo = true;
-// This might be suitable for channels with status other than 13, 
+// This might be suitable for channels with status other than 13,
 // since this function is written as a general one ...
      if( !ebrechit->isRecovered() ) toDo = false;
 //     if( !ebrechit->checkFlag(EcalRecHit::kTowerRecovered) ) toDo = false;
 
+
+
      if( toDo ){
+
+	//If we considerkTPSaturated and a recHit has a flag set, we can immediately flag the event.
+        if(ebrechit->checkFlag(EcalRecHit::kTPSaturated) && usekTPSaturated_) return 1;
 
         EcalTrigTowerDetId ttDetId = ttItor->second;
         int ttzside = ttDetId.zside();
@@ -479,12 +500,15 @@ int EcalDeadCellTriggerPrimitiveFilter::setEvtRecHitstatus(const double &tpValCu
      bool toDo = false;
      if( chnStatus >0 && status == chnStatus ) toDo = true;
      if( chnStatus <0 && status >= abs(chnStatus) ) toDo = true;
-// This might be suitable for channels with status other than 13, 
+// This might be suitable for channels with status other than 13,
 // since this function is written as a general one ...
      if( !eerechit->isRecovered() ) toDo = false;
 //     if( !eerechit->checkFlag(EcalRecHit::kTowerRecovered) ) toDo = false;
 
      if( toDo ){
+
+	//If we considerkTPSaturated and a recHit has a flag set, we can immediately flag the event.
+        if(eerechit->checkFlag(EcalRecHit::kTPSaturated) && usekTPSaturated_) return 1;
 
 // vvvv= Only for debuging or testing purpose =vvvv
         EcalTrigTowerDetId ttDetId = ttItor->second;
@@ -522,6 +546,9 @@ int EcalDeadCellTriggerPrimitiveFilter::setEvtRecHitstatus(const double &tpValCu
         }
      }
   } // loop over EE
+
+  //If we are not using the TT sum, then at this point we need not do anything further, we'll pass the event
+  if(!useTTsum_) return 0;
 
 // Checking for EB
   std::map<EcalTrigTowerDetId, double>::iterator ttetItor;
@@ -571,20 +598,20 @@ int EcalDeadCellTriggerPrimitiveFilter::setEvtRecHitstatus(const double &tpValCu
 
 
 int EcalDeadCellTriggerPrimitiveFilter::setEvtTPstatus(const double &tpValCut, const int &chnStatus){
- 
+
   if( debug_ && verbose_ >=2) std::cout<<"***begin setEvtTPstatus***"<<std::endl;
 
   int isPassCut =0;
 
   std::map<DetId, std::vector<int> >::iterator bitItor;
   for(bitItor = EcalAllDeadChannelsBitMap.begin(); bitItor != EcalAllDeadChannelsBitMap.end(); bitItor++){
-        
+
      DetId maskedDetId = bitItor->first;
      int subdet = bitItor->second.front(), status = bitItor->second.back();
 
 // if NOT filtering on EE, skip EE subdet
      if( !doEEfilter_ && subdet != 1 ) continue;
-           
+
      std::map<DetId, EcalTrigTowerDetId>::iterator ttItor = EcalAllDeadChannelsTTMap.find(maskedDetId);
      if( ttItor == EcalAllDeadChannelsTTMap.end() ) continue;
 
@@ -621,11 +648,11 @@ int EcalDeadCellTriggerPrimitiveFilter::getChannelStatusMaps(){
   for( int ieta=-85; ieta<=85; ieta++ ){
      for( int iphi=0; iphi<=360; iphi++ ){
         if(! EBDetId::validDetId( ieta, iphi ) )  continue;
-            
+
         const EBDetId detid = EBDetId( ieta, iphi, EBDetId::ETAPHIMODE );
         EcalChannelStatus::const_iterator chit = ecalStatus->find( detid );
 // refer https://twiki.cern.ch/twiki/bin/viewauth/CMS/EcalChannelStatus
-        int status = ( chit != ecalStatus->end() ) ? chit->getStatusCode() & 0x1F : -1; 
+        int status = ( chit != ecalStatus->end() ) ? chit->getStatusCode() & 0x1F : -1;
 
         const CaloSubdetectorGeometry*  subGeom = geometry->getSubdetectorGeometry (detid);
         const CaloCellGeometry*        cellGeom = subGeom->getGeometry (detid);
@@ -644,35 +671,37 @@ int EcalDeadCellTriggerPrimitiveFilter::getChannelStatusMaps(){
   } // end loop ieta
 
 // Loop over EE detid
-  for( int ix=0; ix<=100; ix++ ){
-     for( int iy=0; iy<=100; iy++ ){
-        for( int iz=-1; iz<=1; iz++ ){
-           if(iz==0)  continue;
-           if(! EEDetId::validDetId( ix, iy, iz ) )  continue;
+  if (doEEfilter_) {
+      for( int ix=0; ix<=100; ix++ ){
+         for( int iy=0; iy<=100; iy++ ){
+            for( int iz=-1; iz<=1; iz++ ){
+               if(iz==0)  continue;
+               if(! EEDetId::validDetId( ix, iy, iz ) )  continue;
 
-           const EEDetId detid = EEDetId( ix, iy, iz, EEDetId::XYMODE );
-           EcalChannelStatus::const_iterator chit = ecalStatus->find( detid );
-           int status = ( chit != ecalStatus->end() ) ? chit->getStatusCode() & 0x1F : -1;
+               const EEDetId detid = EEDetId( ix, iy, iz, EEDetId::XYMODE );
+               EcalChannelStatus::const_iterator chit = ecalStatus->find( detid );
+               int status = ( chit != ecalStatus->end() ) ? chit->getStatusCode() & 0x1F : -1;
 
-           const CaloSubdetectorGeometry*  subGeom = geometry->getSubdetectorGeometry (detid);
-           const CaloCellGeometry*        cellGeom = subGeom->getGeometry (detid);
-           double eta = cellGeom->getPosition ().eta () ;
-           double phi = cellGeom->getPosition ().phi () ;
-           double theta = cellGeom->getPosition().theta();
+               const CaloSubdetectorGeometry*  subGeom = geometry->getSubdetectorGeometry (detid);
+               const CaloCellGeometry*        cellGeom = subGeom->getGeometry (detid);
+               double eta = cellGeom->getPosition ().eta () ;
+               double phi = cellGeom->getPosition ().phi () ;
+               double theta = cellGeom->getPosition().theta();
 
-           if(status >= maskedEcalChannelStatusThreshold_){
-              std::vector<double> valVec; std::vector<int> bitVec;
-              valVec.push_back(eta); valVec.push_back(phi); valVec.push_back(theta);
-              bitVec.push_back(2); bitVec.push_back(ix); bitVec.push_back(iy); bitVec.push_back(iz); bitVec.push_back(status);
-              EcalAllDeadChannelsValMap.insert( std::make_pair(detid, valVec) );
-              EcalAllDeadChannelsBitMap.insert( std::make_pair(detid, bitVec) );
-           }
-        } // end loop iz
-     } // end loop iy
-  } // end loop ix
+               if(status >= maskedEcalChannelStatusThreshold_){
+                  std::vector<double> valVec; std::vector<int> bitVec;
+                  valVec.push_back(eta); valVec.push_back(phi); valVec.push_back(theta);
+                  bitVec.push_back(2); bitVec.push_back(ix); bitVec.push_back(iy); bitVec.push_back(iz); bitVec.push_back(status);
+                  EcalAllDeadChannelsValMap.insert( std::make_pair(detid, valVec) );
+                  EcalAllDeadChannelsBitMap.insert( std::make_pair(detid, bitVec) );
+               }
+            } // end loop iz
+         } // end loop iy
+      } // end loop ix
+  }
 
   EcalAllDeadChannelsTTMap.clear();
-  std::map<DetId, std::vector<int> >::iterator bitItor; 
+  std::map<DetId, std::vector<int> >::iterator bitItor;
   for(bitItor = EcalAllDeadChannelsBitMap.begin(); bitItor != EcalAllDeadChannelsBitMap.end(); bitItor++){
      const DetId id = bitItor->first;
      EcalTrigTowerDetId ttDetId = ttMap_->towerOf(id);

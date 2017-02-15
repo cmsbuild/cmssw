@@ -113,7 +113,11 @@ int main() {
 #endif
 
 
+#ifdef __clang__
+  std::cout << "biggest alignment " << sizeof(double) << std::endl;
+#else
   std::cout << "biggest alignment " << __BIGGEST_ALIGNMENT__ << std::endl;
+#endif
 
 
 
@@ -178,13 +182,11 @@ int main() {
     std::cout << zd.eta()  << " " << (-zd).eta() << std::endl;
     std::cout << zld.eta()  << " " << (-zld).eta() << std::endl;
     
-#if defined( __GXX_EXPERIMENTAL_CXX0X__)
     auto s = x+xd - 3.1*z;
     std::cout << s << std::endl;
     auto s2 = x+xld - 3.1*zd;
     std::cout << s2 << std::endl;
 
-#endif
   }
 
  {

@@ -5,7 +5,6 @@
  *
  */
 
-#include <typeinfo>
 #include <string>
 #include <vector>
 
@@ -18,6 +17,7 @@
 #include "DataFormats/Common/interface/Handle.h"
 #include "DataFormats/Math/interface/deltaPhi.h"
 #include "HLTrigger/JetMET/interface/HLTJetCollectionsFilter.h"
+#include "HLTrigger/HLTcore/interface/defaultModuleLabel.h"
 
 //
 // constructors and destructor
@@ -50,13 +50,13 @@ HLTJetCollectionsFilter<jetType>::fillDescriptions(edm::ConfigurationDescription
   desc.add<double>("MaxAbsJetEta",2.6);
   desc.add<unsigned int>("MinNJets",1);
   desc.add<int>("triggerType",trigger::TriggerJet);
-  descriptions.add(std::string("hlt")+std::string(typeid(HLTJetCollectionsFilter<jetType>).name()),desc);
+  descriptions.add(defaultModuleLabel<HLTJetCollectionsFilter<jetType>>(), desc);
 }
 
 // ------------ method called to produce the data  ------------
 template <typename jetType>
 bool
-HLTJetCollectionsFilter<jetType>::hltFilter(edm::Event& iEvent, const edm::EventSetup& iSetup, trigger::TriggerFilterObjectWithRefs & filterproduct)
+HLTJetCollectionsFilter<jetType>::hltFilter(edm::Event& iEvent, const edm::EventSetup& iSetup, trigger::TriggerFilterObjectWithRefs & filterproduct) const
 {
   using namespace std;
   using namespace edm;
@@ -94,7 +94,7 @@ HLTJetCollectionsFilter<jetType>::hltFilter(edm::Event& iEvent, const edm::Event
 
     if (numberOfGoodJets >= minNJets_) {
       accept = true;
-      // keep looping through collections to save all possible jets 
+      // keep looping through collections to save all possible jets
     }
   }
 

@@ -2,6 +2,7 @@
 #define DataFormats_Provenance_Hash_h
 
 #include <string>
+#include <functional>
 
 /*----------------------------------------------------------------------
   
@@ -35,6 +36,7 @@ namespace edm {
     void toString_(std::string& result, value_type const& hash);
     void toDigest_(cms::Digest& digest, value_type const& hash);
     std::ostream& print_(std::ostream& os, value_type const& hash);
+    size_t smallHash_(value_type const& hash);
   }
 
   template <int I>
@@ -70,10 +72,13 @@ namespace edm {
     value_type compactForm() const;
     
     bool isCompactForm() const;
+
+    ///returns a short hash which can be used with hashing containers
+    size_t smallHash() const;
     
     //Used by ROOT storage
-    // CMS_CLASS_VERSION(10) // This macro is not defined here, so expand it.
-    static short Class_Version() {return 10;}
+    // CMS_CLASS_VERSION(11) // This macro is not defined here, so expand it.
+    static short Class_Version() {return 11;}
 
   private:
 
@@ -210,6 +215,13 @@ namespace edm {
     return hash_detail::compactForm_(hash_);
   }
 
+  template<int I>
+  inline
+  size_t
+  Hash<I>::smallHash() const {
+    return hash_detail::smallHash_(hash_);
+  }
+  
   // Note: this template is not declared 'inline' because of the
   // switch statement.
 

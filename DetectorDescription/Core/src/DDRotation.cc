@@ -1,20 +1,22 @@
+#include <stdio.h>
+#include <atomic>
 #include <cmath>
-#include "DetectorDescription/Core/interface/DDTransform.h"
-#include "DetectorDescription/Base/interface/DDTranslation.h"
-#include "DetectorDescription/Base/interface/DDdebug.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include <Math/AxisAngle.h>
-
 #include <sstream>
-#include <cstdlib>
+#include <string>
 
-// Message logger.
+#include "CLHEP/Units/GlobalSystemOfUnits.h"
+#include "CLHEP/Units/SystemOfUnits.h"
+#include "DetectorDescription/Base/interface/DDRotationMatrix.h"
+#include "DetectorDescription/Base/interface/DDTranslation.h"
+#include "DetectorDescription/Base/interface/Store.h"
+#include "DetectorDescription/Core/interface/DDBase.h"
+#include "DetectorDescription/Core/interface/DDName.h"
+#include "DetectorDescription/Core/interface/DDTransform.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
-
-//static DDRotationMatrix GLOBAL_UNIT;
-
-//DDBase<DDName,DDRotationMatrix*>::StoreT::pointer_type 
-//  DDBase<DDName,DDRotationMatrix*>::StoreT::instance_ = 0;
+#include "FWCore/Utilities/interface/Exception.h"
+#include "Math/GenVector/AxisAngle.h"
+#include "Math/GenVector/Cartesian3D.h"
+#include "Math/GenVector/DisplacementVector3D.h"
 
 std::ostream & operator<<(std::ostream & os, const DDRotation & r)
 {
@@ -27,7 +29,6 @@ std::ostream & operator<<(std::ostream & os, const DDRotation & r)
       os << "t=" << ra.Axis().Theta()/deg << "deg "
          << "p=" << ra.Axis().Phi()/deg << "deg "
 	 << "a=" << ra.Angle()/deg << "deg"; 
-      DCOUT_V('R', rm);
     }
     else {
       os << "* rotation not defined * ";  
@@ -42,12 +43,13 @@ std::ostream & operator<<(std::ostream & os, const DDRotation & r)
 
 DDRotation::DDRotation() : DDBase<DDName,DDRotationMatrix*>()
 {
-  //static bool onlyOnce=true;
-  //if (onlyOnce) {
-  //  static DDRotationMatrix* rm_ = new DDRotationMatrix;
-  //  prep_ = StoreT::instance().create(DDName("",""), rm_ );
   constexpr char const* baseName = "DdBlNa";
-  static int countBlank;
+  // In this particular case, we do not really care about multiple threads
+  // using the same counter, we simply need to have a unique id for the 
+  // blank matrix being created, so just making this static an atomic should do
+  // the trick. In order to ensure repeatibility one should also include some 
+  // some run specific Id, I guess. Not sure it really matters.
+  static std::atomic<int> countBlank;
   char buf[64];
   snprintf(buf, 64, "%s%i", baseName, countBlank++);
   prep_ = StoreT::instance().create(DDName(buf,baseName), new DDRotationMatrix );
@@ -73,14 +75,11 @@ DDRotation::DDRotation(const DDName & name, DDRotationMatrix * rot)
 DDRotation::DDRotation(DDRotationMatrix * rot)
  : DDBase<DDName,DDRotationMatrix*>()
 {
-  static std::string baseNoName("DdNoNa");
-  static int countNN;
-  static std::ostringstream ostr2;
-  ostr2 << countNN++;
-  prep_ = StoreT::instance().create(DDName(baseNoName+ostr2.str(), baseNoName), rot);
-  //  std::cout << "making a NO-NAME " << baseNoName+ostr2.str() << " named rotation, " << prep_->second << std::endl;
-  ostr2.clear();
-  ostr2.str("");
+  static std::atomic<int> countNN;
+  char buf[64];
+  snprintf(buf, 64, "DdNoNa%i", countNN++);
+  prep_ = StoreT::instance().create(DDName(buf, "DdNoNa"), rot);
+  //  std::cout << "making a NO-NAME " << buf << " named rotation, " << prep_->second << std::endl;
 }
 
 // void DDRotation::clear()
@@ -91,8 +90,6 @@ DDRotation::DDRotation(DDRotationMatrix * rot)
 DDRotation DDrot(const DDName & ddname, DDRotationMatrix * rot)
 {
    // memory of rot goes sto DDRotationImpl!!
-   //DCOUT('c', "DDrot: new rotation " << ddname);
-   //if (rot) rot->invert();
    return DDRotation(ddname, rot);
 }
  
@@ -126,8 +123,6 @@ DDRotation DDrot(const DDName & ddname,
 DDRotation DDrotReflect(const DDName & ddname, DDRotationMatrix * rot)
 {
    // memory of rot goes sto DDRotationImpl!!
-   //DCOUT('c', "DDrot: new rotation " << ddname);
-//    if (rot) rot->invert();
    return DDRotation(ddname, rot);
 }
 
@@ -155,10 +150,7 @@ DDRotation DDrotReflect(const DDName & ddname,
 						x.y(),y.y(),z.y(),
 						x.z(),y.z(),z.z());
 
-   //DCOUT('c', "DDrotReflect: new reflection " << ddname);
-   //rot->invert();
    return DDRotation(ddname, rot);  
-   				  		   		  			 
 }		
 
 

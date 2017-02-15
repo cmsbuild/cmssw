@@ -20,13 +20,13 @@ public:
 private:
   int qdctdcFed_;
   HcalLaserUnpacker unpacker_;
-  edm::InputTag fedRawDataCollectionTag_;
+  edm::EDGetTokenT<FEDRawDataCollection> tok_raw_;
 };
 
 HcalLaserReco::HcalLaserReco(edm::ParameterSet const& conf):
-  qdctdcFed_(conf.getUntrackedParameter<int>("QADCTDCFED",8)),
-  fedRawDataCollectionTag_(conf.getParameter<edm::InputTag>("fedRawDataCollectionTag"))
+  qdctdcFed_(conf.getUntrackedParameter<int>("QADCTDCFED",8))
 {
+  tok_raw_ = consumes<FEDRawDataCollection>(conf.getParameter<edm::InputTag>("fedRawDataCollectionTag"));
   
     produces<HcalLaserDigi>();
 }
@@ -39,11 +39,10 @@ void HcalLaserReco::produce(edm::Event& e, const edm::EventSetup&)
 {
   // Step A: Get Inputs 
   edm::Handle<FEDRawDataCollection> rawraw;
-  e.getByLabel(fedRawDataCollectionTag_, rawraw);
+  e.getByToken(tok_raw_, rawraw);
 
   // Step B: Create empty output    
-  std::auto_ptr<HcalLaserDigi>
-    digi(new HcalLaserDigi);
+  auto digi = std::make_unique<HcalLaserDigi>();
     
   if (qdctdcFed_ >=0) {
     // Step C: unpack all requested FEDs
@@ -52,7 +51,7 @@ void HcalLaserReco::produce(edm::Event& e, const edm::EventSetup&)
   }
   
   // Step D: Put outputs into event
-  e.put(digi);
+  e.put(std::move(digi));
 }
 
 #include "FWCore/PluginManager/interface/ModuleDef.h"

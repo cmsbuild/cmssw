@@ -1,4 +1,3 @@
-// Last commit: $Id: SiStripConfigDb.h,v 1.78 2009/11/03 22:17:53 wto Exp $
 
 #ifndef OnlineDB_SiStripConfigDb_SiStripConfigDb_h
 #define OnlineDB_SiStripConfigDb_SiStripConfigDb_h
@@ -26,6 +25,7 @@
 #include <string>
 #include <list>
 #include <map>
+#include <atomic>
 
 #include "DbClient.h"
 
@@ -453,9 +453,9 @@ class SiStripConfigDb {
   bool openConnection_;
   
   /** Static counter of instances of this class. */
-  static uint32_t cntr_;
+  static std::atomic<uint32_t> cntr_;
 
-  static bool allowCalibUpload_;
+  static std::atomic<bool> allowCalibUpload_;
 
   
 };

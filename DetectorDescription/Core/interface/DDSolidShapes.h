@@ -13,14 +13,14 @@ enum DDSolidShape { dd_not_init,
 		    ddshapeless,
 		    ddpseudotrap, ddtrunctubs, ddsphere,
 		    ddorb, ddellipticaltube, ddellipsoid,
-		    ddparallelepiped
+		    ddparallelepiped, ddcuttubs
 		   };
 		   
 struct DDSolidShapesName {
 
-  static const char * name(DDSolidShape s) 
+  static const char * const name(DDSolidShape s) 
   {
-    static const char* c[] = { 
+    static const char * const c[] = { 
       "Solid not initialized",
       "Box", "Tube(section)", "Trapezoid", "Cone(section)",
       "Polycone_rz", "Polyhedra_rz",
@@ -31,7 +31,7 @@ struct DDSolidShapesName {
       "ShapelessSolid",
       "PseudoTrapezoid","TruncatedTube(section)",
       "Sphere(section)", "Orb", "EllipticalTube", "Ellipsoid",
-      "Parallelepiped"
+      "Parallelepiped", "CutTubs"
     };
     return c[s];   			  
   }
@@ -103,6 +103,9 @@ struct DDSolidShapesName {
       break;
     case 21:
       return ddparallelepiped;
+      break;
+    case 22:
+      return ddcuttubs;
       break;
     default:
       throw cms::Exception("DDException") << "DDSolidShapes:index wrong shape";   

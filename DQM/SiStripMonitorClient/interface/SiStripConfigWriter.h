@@ -8,7 +8,7 @@
  *
  *  \author Suchandra Dutta
  */
-#include <xercesc/util/PlatformUtils.hpp>
+#include "FWCore/Concurrency/interface/Xerces.h"
 #include <xercesc/framework/StdOutFormatTarget.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
 
@@ -19,10 +19,10 @@
 
 
           
-#include<iostream>
-#include<string>
-#include<vector>
-#include<map>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
 
 
 
@@ -54,11 +54,10 @@ class SiStripConfigWriter{
  private:
 	 
 	xercesc::DOMElement* theTopElement;
-	xercesc::DOMElement* lastElement;
+	xercesc::DOMElement* theLastElement;
 	xercesc::DOMDocument* theDoc ;
-        xercesc::DOMImplementation* domImpl;
-        xercesc::DOMWriter* domWriter;
-
+        xercesc::DOMLSSerializer* theDomWriter;
+	xercesc::DOMLSOutput* theOutput;
 };
 
 

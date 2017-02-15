@@ -10,20 +10,15 @@ Calibration/HcalIsolatedTrackReco/src/SubdetFEDSelector.cc
 
 
 #include "Calibration/HcalAlCaRecoProducers/interface/AlCaHcalNoiseProducer.h"
-#include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 
-#include "DataFormats/FEDRawData/interface/FEDRawDataCollection.h"
 #include "DataFormats/FEDRawData/interface/FEDRawData.h"
 #include "DataFormats/FEDRawData/interface/FEDNumbering.h"
 
 #include "EventFilter/RawDataCollector/interface/RawDataFEDSelector.h"
 
-#include "DataFormats/CaloTowers/interface/CaloTowerCollection.h"
 #include "DataFormats/CaloTowers/interface/CaloTower.h"
-#include "DataFormats/JetReco/interface/CaloJetCollection.h"
 #include "DataFormats/JetReco/interface/CaloJet.h"
 #include "DataFormats/METReco/interface/CaloMET.h"
-#include "DataFormats/METReco/interface/CaloMETCollection.h"
 #include "DataFormats/Math/interface/deltaR.h"
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
@@ -31,21 +26,25 @@ Calibration/HcalIsolatedTrackReco/src/SubdetFEDSelector.cc
 
 AlCaHcalNoiseProducer::AlCaHcalNoiseProducer(const edm::ParameterSet& iConfig)
 {
-   JetSource_ = iConfig.getParameter<edm::InputTag>("JetSource");
-   MetSource_ = iConfig.getParameter<edm::InputTag>("MetSource");
-   TowerSource_ = iConfig.getParameter<edm::InputTag>("TowerSource");
+   tok_jets_ = consumes<reco::CaloJetCollection>(iConfig.getParameter<edm::InputTag>("JetSource"));
+   tok_met_ = consumes<reco::CaloMETCollection>(iConfig.getParameter<edm::InputTag>("MetSource"));
+   tok_tower_ = consumes<CaloTowerCollection>(iConfig.getParameter<edm::InputTag>("TowerSource"));
    useMet_ = iConfig.getParameter<bool>("UseMET");
    useJet_ = iConfig.getParameter<bool>("UseJet");
    MetCut_ = iConfig.getParameter<double>("MetCut");
    JetMinE_ = iConfig.getParameter<double>("JetMinE");
    JetHCALminEnergyFraction_ = iConfig.getParameter<double>("JetHCALminEnergyFraction");
 
-   hoLabel_ = iConfig.getParameter<edm::InputTag>("hoInput");
-   hfLabel_ = iConfig.getParameter<edm::InputTag>("hfInput");
-   hbheLabel_ = iConfig.getParameter<edm::InputTag>("hbheInput");
+   tok_ho_ = consumes<HORecHitCollection>(iConfig.getParameter<edm::InputTag>("hoInput"));
+   tok_hf_ = consumes<HFRecHitCollection>(iConfig.getParameter<edm::InputTag>("hfInput"));
+   tok_hbhe_ = consumes<HBHERecHitCollection>(iConfig.getParameter<edm::InputTag>("hbheInput"));
    ecalLabels_= iConfig.getParameter<std::vector<edm::InputTag> >("ecalInputs");
-   ecalPSLabel_=iConfig.getParameter<edm::InputTag>("ecalPSInput");
-   rawInLabel_=iConfig.getParameter<edm::InputTag>("rawInput");
+   tok_ps_ = consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("ecalPSInput"));
+   tok_raw_ = consumes<FEDRawDataCollection>(iConfig.getParameter<edm::InputTag>("rawInput"));
+
+   const unsigned nLabels = ecalLabels_.size();
+   for( unsigned i=0; i != nLabels; i++ )
+      toks_ecal_.push_back( consumes<EcalRecHitCollection>(ecalLabels_[i]) ); 
 
   
    //register products
@@ -80,7 +79,7 @@ AlCaHcalNoiseProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
    if (useMet_)
      {
        edm::Handle <reco::CaloMETCollection> metHandle;
-       iEvent.getByLabel(MetSource_, metHandle);
+       iEvent.getByToken(tok_met_, metHandle);
        const reco::CaloMETCollection *metCol = metHandle.product();
        const reco::CaloMET met = metCol->front();
     
@@ -90,10 +89,10 @@ AlCaHcalNoiseProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
    if (useJet_)
      {
        edm::Handle<reco::CaloJetCollection> calojetHandle;
-       iEvent.getByLabel(JetSource_,calojetHandle);
+       iEvent.getByToken(tok_jets_,calojetHandle);
        
        edm::Handle<CaloTowerCollection> towerHandle;
-       iEvent.getByLabel(TowerSource_, towerHandle);
+       iEvent.getByToken(tok_tower_, towerHandle);
 
        std::vector<CaloTower> TowerContainer;
        std::vector<reco::CaloJet> JetContainer;
@@ -128,14 +127,14 @@ AlCaHcalNoiseProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 
     //Create empty output collections
    
-  std::auto_ptr<HBHERecHitCollection> miniHBHERecHitCollection(new HBHERecHitCollection);
-  std::auto_ptr<HORecHitCollection> miniHORecHitCollection(new HORecHitCollection);
-  std::auto_ptr<HFRecHitCollection> miniHFRecHitCollection(new HFRecHitCollection);
+  auto miniHBHERecHitCollection = std::make_unique<HBHERecHitCollection>();
+  auto miniHORecHitCollection = std::make_unique<HORecHitCollection>();
+  auto miniHFRecHitCollection = std::make_unique<HFRecHitCollection>();
 
-  std::auto_ptr<EcalRecHitCollection> outputEColl(new EcalRecHitCollection);
-  std::auto_ptr<EcalRecHitCollection> outputESColl(new EcalRecHitCollection);
+  auto outputEColl = std::make_unique<EcalRecHitCollection>();
+  auto outputESColl = std::make_unique<EcalRecHitCollection>();
 
-  std::auto_ptr<FEDRawDataCollection> outputFEDs(new FEDRawDataCollection);
+  auto outputFEDs = std::make_unique<FEDRawDataCollection>();
 
 
   // if good event get and save all colletions
@@ -145,22 +144,22 @@ AlCaHcalNoiseProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
       edm::Handle<HORecHitCollection> ho;
       edm::Handle<HFRecHitCollection> hf;
       
-      iEvent.getByLabel(hbheLabel_,hbhe);
-      iEvent.getByLabel(hoLabel_,ho);
-      iEvent.getByLabel(hfLabel_,hf);
+      iEvent.getByToken(tok_hbhe_,hbhe);
+      iEvent.getByToken(tok_ho_,ho);
+      iEvent.getByToken(tok_hf_,hf);
 
       edm::Handle<EcalRecHitCollection> pRecHits;
-      iEvent.getByLabel(ecalPSLabel_,pRecHits);
+      iEvent.getByToken(tok_ps_,pRecHits);
 
       // temporary collection of EB+EE recHits
 
-      std::auto_ptr<EcalRecHitCollection> tmpEcalRecHitCollection(new EcalRecHitCollection);
+      auto tmpEcalRecHitCollection = std::make_unique<EcalRecHitCollection>();
       
-      std::vector<edm::InputTag>::const_iterator i;
-      for (i=ecalLabels_.begin(); i!=ecalLabels_.end(); i++) 
+      std::vector<edm::EDGetTokenT<EcalRecHitCollection> >::const_iterator i;
+      for (i=toks_ecal_.begin(); i!=toks_ecal_.end(); i++) 
 	{
 	  edm::Handle<EcalRecHitCollection> ec;
-	  iEvent.getByLabel(*i,ec);
+	  iEvent.getByToken(*i,ec);
 	  for(EcalRecHitCollection::const_iterator recHit = (*ec).begin(); recHit != (*ec).end(); ++recHit)
 	    {
 	      tmpEcalRecHitCollection->push_back(*recHit);
@@ -206,7 +205,7 @@ AlCaHcalNoiseProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 
       // get HCAL FEDs
       edm::Handle<FEDRawDataCollection> rawIn;
-      iEvent.getByLabel(rawInLabel_,rawIn);
+      iEvent.getByToken(tok_raw_,rawIn);
       
       std::vector<int> selFEDs;
       for (int i=FEDNumbering::MINHCALFEDID; i<=FEDNumbering::MAXHCALFEDID; i++)
@@ -256,10 +255,10 @@ AlCaHcalNoiseProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     }
 
   //Put selected information in the event
-  iEvent.put( miniHBHERecHitCollection, "HBHERecHitCollectionFHN");
-  iEvent.put( miniHORecHitCollection, "HORecHitCollectionFHN");
-  iEvent.put( miniHFRecHitCollection, "HFRecHitCollectionFHN");
-  iEvent.put( outputEColl, "EcalRecHitCollectionFHN"); 
-  iEvent.put( outputESColl, "PSEcalRecHitCollectionFHN");
-  iEvent.put( outputFEDs, "HcalFEDsFHN"); 
+  iEvent.put(std::move(miniHBHERecHitCollection), "HBHERecHitCollectionFHN");
+  iEvent.put(std::move(miniHORecHitCollection), "HORecHitCollectionFHN");
+  iEvent.put(std::move(miniHFRecHitCollection), "HFRecHitCollectionFHN");
+  iEvent.put(std::move(outputEColl), "EcalRecHitCollectionFHN"); 
+  iEvent.put(std::move(outputESColl), "PSEcalRecHitCollectionFHN");
+  iEvent.put(std::move(outputFEDs), "HcalFEDsFHN"); 
 }

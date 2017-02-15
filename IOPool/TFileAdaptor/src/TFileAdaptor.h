@@ -1,7 +1,10 @@
 #ifndef IOPool_TFileAdaptor_TFileAdaptor_h
 #define IOPool_TFileAdaptor_TFileAdaptor_h
 
+#include "FWCore/Utilities/interface/propagate_const.h"
+
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,14 +23,16 @@ public:
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
+  friend class TFileAdaptorUI;
+private:
   // Write current Storage statistics on a ostream
   void termination(void) const;
-
+  
+  //Called by TFileAdaptorUI
   void stats(std::ostream &o) const;
-
+  
   void statsXML(std::map<std::string, std::string> &data) const;
-
-private:
+  
   static void addType(TPluginManager* mgr, char const* type, int altType=0);
   bool native(char const* proto) const;
 
@@ -52,4 +57,25 @@ namespace edm {
     }
   }
 }
+
+/*
+ * wrapper to bind TFileAdaptor to root, python etc
+ * loading IOPoolTFileAdaptor library and instantiating
+ * TFileAdaptorUI will make root to use StorageAdaptor for I/O instead
+ * of its own plugins
+ */
+
+class TFileAdaptorUI {
+public:
+
+  TFileAdaptorUI();
+  ~TFileAdaptorUI();
+
+  // print current Storage statistics on cout
+  void stats() const;
+
+private:
+  edm::propagate_const<std::shared_ptr<TFileAdaptor>> me;
+};
+
 #endif

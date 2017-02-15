@@ -4,11 +4,11 @@
 #include "FWCore/Framework/interface/ESHandle.h"
 
 #include "DataFormats/EcalDetId/interface/EcalDetIdCollections.h"
-#include "DataFormats/EcalDigi/interface/EcalDigiCollections.h"
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 
-#include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 
 #include "Geometry/EcalMapping/interface/EcalMappingRcd.h"
@@ -23,22 +23,22 @@
 EcalDetIdToBeRecoveredProducer::EcalDetIdToBeRecoveredProducer(const edm::ParameterSet& ps)
 {
         // SRP collections
-        ebSrFlagCollection_ = ps.getParameter<edm::InputTag>("ebSrFlagCollection");
-        eeSrFlagCollection_ = ps.getParameter<edm::InputTag>("eeSrFlagCollection");
+        ebSrFlagToken_ = consumes<EBSrFlagCollection>(ps.getParameter<edm::InputTag>("ebSrFlagCollection"));
+        eeSrFlagToken_ = consumes<EESrFlagCollection>(ps.getParameter<edm::InputTag>("eeSrFlagCollection"));
 
         // Integrity for xtal data
-        ebIntegrityGainErrorsCollection_ = ps.getParameter<edm::InputTag>("ebIntegrityGainErrors");
-        ebIntegrityGainSwitchErrorsCollection_ = ps.getParameter<edm::InputTag>("ebIntegrityGainSwitchErrors");
-        ebIntegrityChIdErrorsCollection_ = ps.getParameter<edm::InputTag>("ebIntegrityChIdErrors");
+        ebIntegrityGainErrorsToken_ = consumes<EBDetIdCollection>(ps.getParameter<edm::InputTag>("ebIntegrityGainErrors"));
+        ebIntegrityGainSwitchErrorsToken_ = consumes<EBDetIdCollection>(ps.getParameter<edm::InputTag>("ebIntegrityGainSwitchErrors"));
+        ebIntegrityChIdErrorsToken_ = consumes<EBDetIdCollection>(ps.getParameter<edm::InputTag>("ebIntegrityChIdErrors"));
 
         // Integrity for xtal data - EE specific (to be rivisited towards EB+EE common collection)
-        eeIntegrityGainErrorsCollection_ = ps.getParameter<edm::InputTag>("eeIntegrityGainErrors");
-        eeIntegrityGainSwitchErrorsCollection_ = ps.getParameter<edm::InputTag>("eeIntegrityGainSwitchErrors");
-        eeIntegrityChIdErrorsCollection_ = ps.getParameter<edm::InputTag>("eeIntegrityChIdErrors");
+        eeIntegrityGainErrorsToken_ = consumes<EEDetIdCollection>(ps.getParameter<edm::InputTag>("eeIntegrityGainErrors"));
+        eeIntegrityGainSwitchErrorsToken_ = consumes<EEDetIdCollection>(ps.getParameter<edm::InputTag>("eeIntegrityGainSwitchErrors"));
+        eeIntegrityChIdErrorsToken_ = consumes<EEDetIdCollection>(ps.getParameter<edm::InputTag>("eeIntegrityChIdErrors"));
 
         // Integrity Errors
-        integrityTTIdErrorsCollection_ = ps.getParameter<edm::InputTag>("integrityTTIdErrors");
-        integrityBlockSizeErrorsCollection_ = ps.getParameter<edm::InputTag>("integrityBlockSizeErrors");
+        integrityTTIdErrorsToken_ = consumes<EcalElectronicsIdCollection>(ps.getParameter<edm::InputTag>("integrityTTIdErrors"));
+        integrityBlockSizeErrorsToken_ = consumes<EcalElectronicsIdCollection>(ps.getParameter<edm::InputTag>("integrityBlockSizeErrors"));
 
         // output collections
         ebDetIdCollection_ = ps.getParameter<std::string>("ebDetIdToBeRecovered");
@@ -85,10 +85,10 @@ void EcalDetIdToBeRecoveredProducer::produce(edm::Event& ev, const edm::EventSet
         std::vector< edm::Handle<EEDetIdCollection> > eeDetIdColls;
         std::vector< edm::Handle<EcalElectronicsIdCollection> > ttColls;
 
-        std::auto_ptr< std::set<EBDetId> > ebDetIdToRecover( new std::set<EBDetId> ); // isolated channels to be recovered
-        std::auto_ptr< std::set<EEDetId> > eeDetIdToRecover( new std::set<EEDetId> ); // isolated channels to be recovered
-        std::auto_ptr< std::set<EcalTrigTowerDetId> > ebTTDetIdToRecover( new std::set<EcalTrigTowerDetId> ); // tt to be recovered
-        std::auto_ptr< std::set<EcalScDetId> > eeSCDetIdToRecover( new std::set<EcalScDetId> ); // sc to be recovered
+        auto ebDetIdToRecover = std::make_unique<std::set<EBDetId>>(); // isolated channels to be recovered
+        auto eeDetIdToRecover = std::make_unique<std::set<EEDetId>>(); // isolated channels to be recovered
+        auto ebTTDetIdToRecover = std::make_unique<std::set<EcalTrigTowerDetId>>(); // tt to be recovered
+        auto eeSCDetIdToRecover = std::make_unique<std::set<EcalScDetId>>(); // sc to be recovered
 
         /*
          * get collections
@@ -96,76 +96,50 @@ void EcalDetIdToBeRecoveredProducer::produce(edm::Event& ev, const edm::EventSet
 
         // Selective Readout Flags
         edm::Handle<EBSrFlagCollection> ebSrFlags;
-        ev.getByLabel(ebSrFlagCollection_, ebSrFlags );
-        if ( ! ebSrFlags.isValid() ) {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer: -->") << ebSrFlagCollection_ << " not available";
-        }
+        ev.getByToken(ebSrFlagToken_, ebSrFlags );
+
         edm::Handle<EESrFlagCollection> eeSrFlags;
-        ev.getByLabel(eeSrFlagCollection_, eeSrFlags );
-        if ( ! eeSrFlags.isValid() ) {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer: -->") << eeSrFlagCollection_ << " not available";
-        }
+        ev.getByToken(eeSrFlagToken_, eeSrFlags );
 
         // Integrity errors
         edm::Handle<EBDetIdCollection> ebIntegrityGainErrors;
-        ev.getByLabel( ebIntegrityGainErrorsCollection_, ebIntegrityGainErrors );
-        if ( ebIntegrityGainErrors.isValid() ) {
-                ebDetIdColls.push_back( ebIntegrityGainErrors );
-        } else {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer") << ebIntegrityGainErrorsCollection_ << " not available";
-        }
-        edm::Handle<EBDetIdCollection> ebIntegrityGainSwitchErrors;
-        ev.getByLabel( ebIntegrityGainSwitchErrorsCollection_, ebIntegrityGainSwitchErrors );
-        if ( ebIntegrityGainSwitchErrors.isValid() ) {
-                ebDetIdColls.push_back( ebIntegrityGainSwitchErrors );
-        } else {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer") << ebIntegrityGainErrorsCollection_ << " not available";
-        }
-        edm::Handle<EBDetIdCollection> ebIntegrityChIdErrors;
-        ev.getByLabel( ebIntegrityChIdErrorsCollection_, ebIntegrityChIdErrors );
-        if ( ebIntegrityChIdErrors.isValid() ) {
-                ebDetIdColls.push_back( ebIntegrityChIdErrors );
-        } else {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer") << ebIntegrityChIdErrorsCollection_ << " not available";
-        }
+        ev.getByToken( ebIntegrityGainErrorsToken_, ebIntegrityGainErrors );
 
+	ebDetIdColls.push_back( ebIntegrityGainErrors );
+       
+        edm::Handle<EBDetIdCollection> ebIntegrityGainSwitchErrors;
+        ev.getByToken( ebIntegrityGainSwitchErrorsToken_, ebIntegrityGainSwitchErrors );       
+	ebDetIdColls.push_back( ebIntegrityGainSwitchErrors );
+
+        edm::Handle<EBDetIdCollection> ebIntegrityChIdErrors;
+        ev.getByToken( ebIntegrityChIdErrorsToken_, ebIntegrityChIdErrors );
+	ebDetIdColls.push_back( ebIntegrityChIdErrors );
+       
         edm::Handle<EEDetIdCollection> eeIntegrityGainErrors;
-        ev.getByLabel( eeIntegrityGainErrorsCollection_, eeIntegrityGainErrors );
-        if ( eeIntegrityGainErrors.isValid() ) {
-                eeDetIdColls.push_back( eeIntegrityGainErrors );
-        } else {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer") << eeIntegrityGainErrorsCollection_ << " not available";
-        }
+        ev.getByToken( eeIntegrityGainErrorsToken_, eeIntegrityGainErrors );
+	eeDetIdColls.push_back( eeIntegrityGainErrors );
+       
         edm::Handle<EEDetIdCollection> eeIntegrityGainSwitchErrors;
-        ev.getByLabel( eeIntegrityGainSwitchErrorsCollection_, eeIntegrityGainSwitchErrors );
-        if ( eeIntegrityGainSwitchErrors.isValid() ) {
-                eeDetIdColls.push_back( eeIntegrityGainSwitchErrors );
-        } else {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer") << eeIntegrityGainErrorsCollection_ << " not available";
-        }
+        ev.getByToken( eeIntegrityGainSwitchErrorsToken_, eeIntegrityGainSwitchErrors );
+	eeDetIdColls.push_back( eeIntegrityGainSwitchErrors );
+		
+
+
         edm::Handle<EEDetIdCollection> eeIntegrityChIdErrors;
-        ev.getByLabel( eeIntegrityChIdErrorsCollection_, eeIntegrityChIdErrors );
-        if ( eeIntegrityChIdErrors.isValid() ) {
-                eeDetIdColls.push_back( eeIntegrityChIdErrors );
-        } else {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer") << eeIntegrityChIdErrorsCollection_ << " not available";
-        }
+        ev.getByToken( eeIntegrityChIdErrorsToken_, eeIntegrityChIdErrors );
+	eeDetIdColls.push_back( eeIntegrityChIdErrors );
+ 
+ 
+ 
 
         edm::Handle<EcalElectronicsIdCollection> integrityTTIdErrors;
-        ev.getByLabel( integrityTTIdErrorsCollection_, integrityTTIdErrors );
-        if ( integrityTTIdErrors.isValid() ) {
-                ttColls.push_back( integrityTTIdErrors );
-        } else {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer") << integrityTTIdErrorsCollection_ << " not available";
-        }
-        edm::Handle<EcalElectronicsIdCollection> integrityBlockSizeErrors;
-        ev.getByLabel( integrityBlockSizeErrorsCollection_, integrityBlockSizeErrors );
-        if ( integrityBlockSizeErrors.isValid() ) {
-                ttColls.push_back( integrityBlockSizeErrors );
-        } else {
-                edm::LogWarning("EcalDetIdToBeRecoveredProducer") << integrityBlockSizeErrorsCollection_ << " not available";
-        }
+        ev.getByToken( integrityTTIdErrorsToken_, integrityTTIdErrors );
+	ttColls.push_back( integrityTTIdErrors );
 
+        edm::Handle<EcalElectronicsIdCollection> integrityBlockSizeErrors;
+        ev.getByToken( integrityBlockSizeErrorsToken_, integrityBlockSizeErrors );
+	ttColls.push_back( integrityBlockSizeErrors );
+               
         /*
          *  get regions of interest from SRP
          */
@@ -177,9 +151,9 @@ void EcalDetIdToBeRecoveredProducer::produce(edm::Event& ev, const edm::EventSet
                 if ( flag == EcalSrFlag::SRF_FULL || ( flag == EcalSrFlag::SRF_FORCED_MASK) ) {
                         const EcalTrigTowerDetId ttId = it->id();
                         ebSrpTTDetId.push_back( ttId );
-                        //std::vector<DetId> vid = ecalMapping_->dccTowerConstituents( ttId.iDCC(), ttId.iTT() );
+                
                         const std::vector<DetId> vid = ttMap_->constituentsOf( ttId );
-                        //ebSrpDetId.insert( ebSrpDetId.end(), vid.begin(), vid.end() );
+                
                         for ( std::vector<DetId>::const_iterator itId = vid.begin(); itId != vid.end(); ++itId ) {
                                 ebSrpDetId.push_back( *itId );
                         }
@@ -253,7 +227,7 @@ void EcalDetIdToBeRecoveredProducer::produce(edm::Event& ev, const edm::EventSet
         for ( EBDetIdCollection::const_iterator itId = ebSrpDetId.begin(); itId != ebSrpDetId.end(); ++itId ) {
                 EcalChannelStatusMap::const_iterator chit = chStatus_->find( *itId );
                 if ( chit != chStatus_->end() ) {
-                        const int flag = (*chit).getStatusCode() & 0x001F;
+                        const int flag = (*chit).getStatusCode();
                         if ( flag >= 10 && flag <= 12) { // FIXME -- avoid hardcoded values...
                                 ebDetIdToRecover->insert( *itId );
                         } else if ( flag == 13 || flag == 14 ) { // FIXME -- avoid hardcoded values...
@@ -269,7 +243,7 @@ void EcalDetIdToBeRecoveredProducer::produce(edm::Event& ev, const edm::EventSet
         for ( EEDetIdCollection::const_iterator itId = eeSrpDetId.begin(); itId != eeSrpDetId.end(); ++itId ) {
                 EcalChannelStatusMap::const_iterator chit = chStatus_->find( *itId );
                 if ( chit != chStatus_->end() ) {
-                        int flag = (*chit).getStatusCode() & 0x001F;
+                        int flag = (*chit).getStatusCode() ;
                         if ( flag >= 10 && flag <= 12) { // FIXME -- avoid hardcoded values...
                                 eeDetIdToRecover->insert( *itId );
                         } else if ( flag == 13 || flag == 14 ) { // FIXME -- avoid hardcoded values...
@@ -336,10 +310,29 @@ void EcalDetIdToBeRecoveredProducer::produce(edm::Event& ev, const edm::EventSet
         }
 
         // return the collections
-        ev.put( ebDetIdToRecover, ebDetIdCollection_ );
-        ev.put( eeDetIdToRecover, eeDetIdCollection_ );
-        ev.put( ebTTDetIdToRecover, ttDetIdCollection_ );
-        ev.put( eeSCDetIdToRecover, scDetIdCollection_ );
+        ev.put(std::move(ebDetIdToRecover), ebDetIdCollection_ );
+        ev.put(std::move(eeDetIdToRecover), eeDetIdCollection_ );
+        ev.put(std::move(ebTTDetIdToRecover), ttDetIdCollection_ );
+        ev.put(std::move(eeSCDetIdToRecover), scDetIdCollection_ );
+}
+
+void EcalDetIdToBeRecoveredProducer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.add<edm::InputTag>("ebIntegrityChIdErrors",edm::InputTag("ecalDigis","EcalIntegrityChIdErrors"));
+  desc.add<std::string>("ebDetIdToBeRecovered","ebDetId");
+  desc.add<edm::InputTag>("integrityTTIdErrors",edm::InputTag("ecalDigis","EcalIntegrityTTIdErrors"));
+  desc.add<edm::InputTag>("eeIntegrityGainErrors",edm::InputTag("ecalDigis","EcalIntegrityGainErrors"));
+  desc.add<std::string>("ebFEToBeRecovered","ebFE");
+  desc.add<edm::InputTag>("ebIntegrityGainErrors",edm::InputTag("ecalDigis","EcalIntegrityGainErrors"));
+  desc.add<std::string>("eeDetIdToBeRecovered","eeDetId");
+  desc.add<edm::InputTag>("eeIntegrityGainSwitchErrors",edm::InputTag("ecalDigis","EcalIntegrityGainSwitchErrors"));
+  desc.add<edm::InputTag>("eeIntegrityChIdErrors",edm::InputTag("ecalDigis","EcalIntegrityChIdErrors"));
+  desc.add<edm::InputTag>("ebIntegrityGainSwitchErrors",edm::InputTag("ecalDigis","EcalIntegrityGainSwitchErrors"));
+  desc.add<edm::InputTag>("ebSrFlagCollection",edm::InputTag("ecalDigis"));
+  desc.add<std::string>("eeFEToBeRecovered","eeFE");
+  desc.add<edm::InputTag>("integrityBlockSizeErrors",edm::InputTag("ecalDigis","EcalIntegrityBlockSizeErrors"));
+  desc.add<edm::InputTag>("eeSrFlagCollection",edm::InputTag("ecalDigis"));
+  descriptions.add("ecalDetIdToBeRecovered",desc);
 }
 
 

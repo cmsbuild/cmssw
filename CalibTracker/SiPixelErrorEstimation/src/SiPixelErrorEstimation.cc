@@ -16,7 +16,7 @@
 
 #include "DataFormats/TrackerRecHit2D/interface/SiPixelRecHit.h"
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
-#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 #include "DataFormats/SiPixelDetId/interface/PixelSubdetector.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 
@@ -25,6 +25,7 @@
 #include "SimDataFormats/Track/interface/SimTrackContainer.h"
 
 #include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
+#include "Geometry/TrackerGeometryBuilder/interface/StripGeomDetUnit.h"
 
 #include "CalibTracker/SiStripCommon/interface/SiStripDetInfoFileReader.h"
 #include "FWCore/ParameterSet/interface/FileInPath.h"
@@ -33,7 +34,8 @@ using namespace std;
 using namespace edm;
 
 SiPixelErrorEstimation::SiPixelErrorEstimation(const edm::ParameterSet& ps):tfile_(0), ttree_all_hits_(0), 
-									    ttree_track_hits_(0), ttree_track_hits_strip_(0) 
+									    ttree_track_hits_(0), ttree_track_hits_strip_(0),
+									    trackerHitAssociatorConfig_(consumesCollector())
 {
   //Read config file
   outputFile_ = ps.getUntrackedParameter<string>( "outputFile", "SiPixelErrorEstimation_Ntuple.root" );
@@ -45,6 +47,12 @@ SiPixelErrorEstimation::SiPixelErrorEstimation(const edm::ParameterSet& ps):tfil
   checkType_ = ps.getParameter<bool>( "checkType" );
   genType_ = ps.getParameter<int>( "genType" );
   include_trk_hits_ = ps.getParameter<bool>( "include_trk_hits" );
+
+  tTrajectory = consumes<std::vector<Trajectory>> (src_);
+  tPixRecHitCollection = consumes<SiPixelRecHitCollection>(edm::InputTag( "siPixelRecHits"));
+  tSimTrackContainer = consumes <edm::SimTrackContainer>(edm::InputTag("g4SimHits"));
+  tTrackCollection = consumes<reco::TrackCollection>(src_);
+
 }
 
 SiPixelErrorEstimation::~SiPixelErrorEstimation()
@@ -365,7 +373,7 @@ SiPixelErrorEstimation::analyze(const edm::Event& e, const edm::EventSetup& es)
 {
   //Retrieve tracker topology from geometry
   edm::ESHandle<TrackerTopology> tTopoHandle;
-  es.get<IdealGeometryRecord>().get(tTopoHandle);
+  es.get<TrackerTopologyRcd>().get(tTopoHandle);
   const TrackerTopology* const tTopo = tTopoHandle.product();
 
   using namespace edm;
@@ -384,7 +392,7 @@ SiPixelErrorEstimation::analyze(const edm::Event& e, const edm::EventSetup& es)
   float mindist = 999999.9;
 
   std::vector<PSimHit> matched;
-  TrackerHitAssociator associate(e);
+  TrackerHitAssociator associate(e, trackerHitAssociatorConfig_);
 
   edm::ESHandle<TrackerGeometry> pDD;
   es.get<TrackerDigiGeometryRecord> ().get (pDD);
@@ -407,7 +415,7 @@ SiPixelErrorEstimation::analyze(const edm::Event& e, const edm::EventSetup& es)
 
   edm::Handle<vector<Trajectory> > trajCollectionHandle;
   
-  e.getByLabel( src_, trajCollectionHandle);
+  e.getByToken( tTrajectory, trajCollectionHandle);
   //e.getByLabel( "generalTracks", trajCollectionHandle);
 
   for ( vector<Trajectory>::const_iterator it = trajCollectionHandle->begin(); it!=trajCollectionHandle->end(); ++it )
@@ -689,11 +697,11 @@ SiPixelErrorEstimation::analyze(const edm::Event& e, const edm::EventSetup& es)
 	      //strip_clst_err_y = ... 
 
 	      // Get cluster total charge
-	      const std::vector<uint8_t>& stripCharges = cluster->amplitudes();
+	      const auto & stripCharges = cluster->amplitudes();
 	      uint16_t charge = 0;
 	      for (unsigned int i = 0; i < stripCharges.size(); ++i) 
 		{
-		  charge += stripCharges.at(i);
+		  charge += stripCharges[i];
 		}
 	      
 	      strip_charge = (float)charge;
@@ -825,11 +833,11 @@ SiPixelErrorEstimation::analyze(const edm::Event& e, const edm::EventSetup& es)
 	      //strip_clst_err_y = ... 
 
 	      // Get cluster total charge
-	      const std::vector<uint8_t>& stripCharges = cluster->amplitudes();
+	      auto & stripCharges = cluster->amplitudes();
 	      uint16_t charge = 0;
 	      for (unsigned int i = 0; i < stripCharges.size(); ++i) 
 		{
-		  charge += stripCharges.at(i);
+		  charge += stripCharges[i];
 		}
 	      
 	      strip_charge = (float)charge;
@@ -909,10 +917,10 @@ SiPixelErrorEstimation::analyze(const edm::Event& e, const edm::EventSetup& es)
 
   // --------------------------------------- all hits -----------------------------------------------------------
   edm::Handle<SiPixelRecHitCollection> recHitColl;
-  e.getByLabel( "siPixelRecHits", recHitColl);
+  e.getByToken(tPixRecHitCollection, recHitColl);
 
   Handle<edm::SimTrackContainer> simtracks;
-  e.getByLabel("g4SimHits", simtracks);
+  e.getByToken(tSimTrackContainer, simtracks);
 
   //-----Iterate over detunits
   for (TrackerGeometry::DetContainer::const_iterator it = pDD->dets().begin(); it != pDD->dets().end(); it++) 
@@ -1354,7 +1362,7 @@ SiPixelErrorEstimation::analyze(const edm::Event& e, const edm::EventSetup& es)
     {
       // Get tracks
       edm::Handle<reco::TrackCollection> trackCollection;
-      e.getByLabel(src_, trackCollection);
+      e.getByToken(tTrackCollection, trackCollection);
       const reco::TrackCollection *tracks = trackCollection.product();
       reco::TrackCollection::const_iterator tciter;
       

@@ -5,14 +5,15 @@
  * Convert HepMC GenEvent format into a collection of type
  * CandidateCollection containing objects of type GenParticle
  *
- * \version $Id: GenParticleProducer.cc,v 1.19 2012/04/10 10:28:14 rwolf Exp $
  *
  */
 #include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Utilities/interface/InputTag.h"
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticleFwd.h"
+#include "SimDataFormats/CrossingFrame/interface/CrossingFrame.h"
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
+#include "PhysicsTools/HepMCCandAlgos/interface/MCTruthHelper.h"
 
 #include <vector>
 #include <string>
@@ -39,13 +40,13 @@ class GenParticleProducer : public edm::EDProducer {
   reco::GenParticleRefProd ref_;
 
  private:
-  /// source collection name  
-  edm::InputTag src_;
-  std::vector<std::string> vectorSrc_;
-  std::string mixLabel_;
+  /// source collection name
+  edm::EDGetTokenT<edm::HepMCProduct> srcToken_;
+  std::vector<edm::EDGetTokenT<edm::HepMCProduct> > vectorSrcTokens_;
+  edm::EDGetTokenT<CrossingFrame<edm::HepMCProduct> > mixToken_;
 
   /// whether the first event was looked at
-  bool firstEvent_; 
+  bool firstEvent_;
   /// unknown code treatment flag
   bool abortOnUnknownPDGCode_;
   /// save bar-codes
@@ -57,6 +58,9 @@ class GenParticleProducer : public edm::EDProducer {
   /// input & output modes
   bool doSubEvent_;
   bool useCF_;
+  
+  MCTruthHelper<HepMC::GenParticle> mcTruthHelper_;
+  MCTruthHelper<reco::GenParticle> mcTruthHelperGenParts_;  
 
 };
 
@@ -64,7 +68,6 @@ class GenParticleProducer : public edm::EDProducer {
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 
 //#include "SimDataFormats/HiGenData/interface/SubEventMap.h"
-#include "SimDataFormats/CrossingFrame/interface/CrossingFrame.h"
 #include "SimDataFormats/CrossingFrame/interface/MixCollection.h"
 
 #include "DataFormats/Common/interface/Handle.h"
@@ -72,6 +75,7 @@ class GenParticleProducer : public edm::EDProducer {
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Utilities/interface/EDMException.h"
+#include "FWCore/Utilities/interface/transform.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include <fstream>
 #include <algorithm>
@@ -82,9 +86,10 @@ using namespace HepMC;
 
 static const int PDGCacheMax = 32768;
 static const double mmToCm = 0.1;
+static const double mmToNs = 1.0/299792458e-6;
 
 GenParticleProducer::GenParticleProducer( const ParameterSet & cfg ) :
-  firstEvent_(true), 
+  firstEvent_(true),
   abortOnUnknownPDGCode_( cfg.getUntrackedParameter<bool>( "abortOnUnknownPDGCode", true ) ),
   saveBarCodes_( cfg.getUntrackedParameter<bool>( "saveBarCodes", false ) ),
   chargeP_( PDGCacheMax, 0 ), chargeM_( PDGCacheMax, 0 ),
@@ -92,30 +97,27 @@ GenParticleProducer::GenParticleProducer( const ParameterSet & cfg ) :
   useCF_(cfg.getUntrackedParameter<bool>( "useCrossingFrame", false ))
 {
   produces<GenParticleCollection>();
+  produces<math::XYZPointF>("xyz0");
+  produces<float>("t0");
   if( saveBarCodes_ ) {
     std::string alias( cfg.getParameter<std::string>( "@module_label" ) );
     produces<vector<int> >().setBranchAlias( alias + "BarCodes" );
-  }				  
+  }
 
-  if(doSubEvent_){
-     vectorSrc_ = cfg.getParameter<std::vector<std::string> >( "srcVector" );
-     //     produces<SubEventMap>();
-  }else if(useCF_) {
-    mixLabel_ = cfg.getParameter<std::string>( "mix" );
-    src_ = cfg.getUntrackedParameter<InputTag>( "src" , InputTag(mixLabel_,"generator"));
-  } else src_ = cfg.getParameter<InputTag>( "src" );
+  if(useCF_) mixToken_ = mayConsume<CrossingFrame<HepMCProduct> >(InputTag(cfg.getParameter<std::string>( "mix" ),"generatorSmeared"));
+  else srcToken_ = mayConsume<HepMCProduct>(cfg.getParameter<InputTag>( "src" ));
 }
 
-GenParticleProducer::~GenParticleProducer() { 
+GenParticleProducer::~GenParticleProducer() {
 }
 
 int GenParticleProducer::chargeTimesThree( int id ) const {
-  if( std::abs( id ) < PDGCacheMax ) 
+  if( std::abs( id ) < PDGCacheMax )
     return id > 0 ? chargeP_[ id ] : chargeM_[ - id ];
   map<int, int>::const_iterator f = chargeMap_.find( id );
   if ( f == chargeMap_.end() )  {
     if ( abortOnUnknownPDGCode_ )
-      throw edm::Exception( edm::errors::LogicError ) 
+      throw edm::Exception( edm::errors::LogicError )
 	<< "invalid PDG id: " << id << endl;
     else
       return HepPDT::ParticleID(id).threeCharge();
@@ -143,73 +145,72 @@ void GenParticleProducer::produce( Event& evt, const EventSetup& es ) {
 	 chargeMap_[ -pdgId ] = -q3;
        }
      }
-     firstEvent_ = false; 
+     firstEvent_ = false;
    }
-      
+
    barcodes_.clear();
-   
+
    size_t totalSize = 0;
-   const GenEvent * mc = 0;   
-   std::vector<Handle<HepMCProduct> > heps;
+   const GenEvent * mc = 0;
    MixCollection<HepMCProduct>* cfhepmcprod = 0;
-   size_t npiles = vectorSrc_.size();
+   size_t npiles = 1;
 
    if(useCF_){
       Handle<CrossingFrame<HepMCProduct> > cf;
-      evt.getByLabel(InputTag(mixLabel_,"generator"),cf);
+      evt.getByToken(mixToken_,cf);
       cfhepmcprod = new MixCollection<HepMCProduct>(cf.product());
       npiles = cfhepmcprod->size();
+      LogDebug("GenParticleProducer")<<"npiles : "<<npiles<<endl;
       for(unsigned int icf = 0; icf < npiles; ++icf){
+	 LogDebug("GenParticleProducer")<<"subSize : "<<cfhepmcprod->getObject(icf).GetEvent()->particles_size()<<endl;
 	 totalSize += cfhepmcprod->getObject(icf).GetEvent()->particles_size();
       }
-   }else if (doSubEvent_){
-      for(size_t i = 0; i < npiles; ++i){
-	//	 cout<<"Tag "<<vectorSrc_[i]<<endl;
-	 Handle<HepMCProduct> handle;
-	 heps.push_back(handle);
-	 evt.getByLabel( vectorSrc_[i], heps[i] );
-	 totalSize += heps[i]->GetEvent()->particles_size();
-      }
+      LogDebug("GenParticleProducer")<<"totalSize : "<<totalSize<<endl;
    }else{
       Handle<HepMCProduct> mcp;
-      evt.getByLabel( src_, mcp );
+      evt.getByToken( srcToken_, mcp );
       mc = mcp->GetEvent();
-      if( mc == 0 ) 
-	 throw edm::Exception( edm::errors::InvalidReference ) 
+      if( mc == 0 )
+	 throw edm::Exception( edm::errors::InvalidReference )
 	    << "HepMC has null pointer to GenEvent" << endl;
       totalSize  = mc->particles_size();
    }
-      
-   // initialise containers 
+
+   // initialise containers
    const size_t size = totalSize;
   vector<const HepMC::GenParticle *> particles( size );
-  auto_ptr<GenParticleCollection> candsPtr( new GenParticleCollection( size ) );
-  //  auto_ptr<SubEventMap> subsPtr( new SubEventMap() );
-  auto_ptr<vector<int> > barCodeVector( new vector<int>( size ) );
+  auto candsPtr = std::make_unique<GenParticleCollection>(size);
+  auto barCodeVector = std::make_unique<vector<int>>(size);
+  std::unique_ptr<math::XYZPointF> xyz0Ptr(new math::XYZPointF(0.,0.,0.));
+  std::unique_ptr<float> t0Ptr(new float(0.f));
   ref_ = evt.getRefBeforePut<GenParticleCollection>();
   GenParticleCollection & cands = * candsPtr;
-  //  SubEventMap & subs = *subsPtr;
   size_t offset = 0;
   size_t suboffset = 0;
 
   /// fill indices
   if(doSubEvent_ || useCF_){
-     for(size_t i = 0; i < npiles; ++i){
+     for(size_t ipile = 0; ipile < npiles; ++ipile){
+	LogDebug("GenParticleProducer")<<"mixed object ipile : "<<ipile<<endl;
 	barcodes_.clear();
-	if(useCF_) mc = cfhepmcprod->getObject(i).GetEvent();
-	else mc = heps[i]->GetEvent();
+	if(useCF_) mc = cfhepmcprod->getObject(ipile).GetEvent();
 
 	//Look whether heavy ion/signal event
 	bool isHI = false;
 	const HepMC::HeavyIon * hi = mc->heavy_ion();
 	if(hi && hi->Ncoll_hard() > 1) isHI = true;
 	size_t num_particles = mc->particles_size();
+	LogDebug("GenParticleProducer")<<"num_particles : "<<num_particles<<endl;
+        if (ipile == 0) {
+            auto origin = (*mc->vertices_begin())->position();
+            xyz0Ptr->SetXYZ(origin.x() * mmToCm, origin.y() * mmToCm, origin.z() * mmToCm);
+            *t0Ptr = origin.t() * mmToNs;
+        }
 	fillIndices(mc, particles, *barCodeVector, offset);
-	// fill output collection and save association 
-	for( size_t i = offset; i < offset + num_particles; ++ i ) {
-
-	   const HepMC::GenParticle * part = particles[ i ];
-	   reco::GenParticle & cand = cands[ i ];
+	// fill output collection and save association
+	for( size_t ipar = offset; ipar < offset + num_particles; ++ ipar ) {
+	   const HepMC::GenParticle * part = particles[ ipar ];
+	   reco::GenParticle & cand = cands[ ipar ];
 	   // convert HepMC::GenParticle to new reco::GenParticle
 	   convertParticle(cand, part);
 	   cand.resetDaughters( ref_.id() );
@@ -222,7 +223,7 @@ void GenParticleProducer::produce( Event& evt, const EventSetup& es ) {
 	   if ( productionVertex != 0 ) {
 	      sub_id = productionVertex->id();
 	      if(!isHI) sub_id = 0;
-	      // search barcode map and attach daughters 
+	      // search barcode map and attach daughters
 	      fillDaughters(cands,part,d);
 	   }else{
 	      const GenVertex * endVertex = part->end_vertex();
@@ -232,7 +233,6 @@ void GenParticleProducer::produce( Event& evt, const EventSetup& es ) {
 	   if(sub_id < 0) sub_id = 0;
 	   int new_id = sub_id + suboffset;
 	   GenParticleRef dref( ref_, d );
-	   //	   subs.insert(dref,new_id);   // For SubEventMap
 	   cands[d].setCollisionId(new_id); // For new GenParticle
 	   LogDebug("VertexId")<<"SubEvent offset 3 : "<<suboffset;
 	}
@@ -246,8 +246,11 @@ void GenParticleProducer::produce( Event& evt, const EventSetup& es ) {
 	offset += num_particles;
      }
   }else{
+     auto origin = (*mc->vertices_begin())->position();
+     xyz0Ptr->SetXYZ(origin.x() * mmToCm, origin.y() * mmToCm, origin.z() * mmToCm);
+     *t0Ptr = origin.t() * mmToNs;
      fillIndices(mc, particles, *barCodeVector, 0);
-     
+
      // fill output collection and save association
      for( size_t i = 0; i < particles.size(); ++ i ) {
 	const HepMC::GenParticle * part = particles[ i ];
@@ -256,7 +259,7 @@ void GenParticleProducer::produce( Event& evt, const EventSetup& es ) {
 	convertParticle(cand, part);
 	cand.resetDaughters( ref_.id() );
      }
-     
+
      // fill references to daughters
      for( size_t d = 0; d < cands.size(); ++ d ) {
 	const HepMC::GenParticle * part = particles[ d ];
@@ -267,11 +270,11 @@ void GenParticleProducer::produce( Event& evt, const EventSetup& es ) {
      }
   }
   
-  evt.put( candsPtr );
-  if(saveBarCodes_) evt.put( barCodeVector );
-  //  if(doSubEvent_) evt.put(subsPtr); // For SubEventMap
+  evt.put(std::move(candsPtr));
+  if(saveBarCodes_) evt.put(std::move(barCodeVector));
   if(cfhepmcprod) delete cfhepmcprod;
-
+  evt.put(std::move(xyz0Ptr),"xyz0");
+  evt.put(std::move(t0Ptr),"t0");
 }
 
 bool GenParticleProducer::convertParticle(reco::GenParticle& cand, const HepMC::GenParticle * part){
@@ -290,6 +293,7 @@ bool GenParticleProducer::convertParticle(reco::GenParticle& cand, const HepMC::
    } else {
       cand.setVertex( Candidate::Point( 0, 0, 0 ) );
    }
+   mcTruthHelper_.fillGenStatusFlags(*part, cand.statusFlags());
    return true;
 }
 

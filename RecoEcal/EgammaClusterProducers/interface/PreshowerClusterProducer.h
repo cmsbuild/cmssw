@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
@@ -18,7 +18,7 @@
 #include "CondFormats/ESObjects/interface/ESMissingEnergyCalibration.h"
 #include "CondFormats/ESObjects/interface/ESChannelStatus.h"
 
-class PreshowerClusterProducer : public edm::EDProducer {
+class PreshowerClusterProducer : public edm::stream::EDProducer<> {
 
  public:
 
@@ -36,8 +36,8 @@ class PreshowerClusterProducer : public edm::EDProducer {
   int nEvt_;         // internal counter of events
 
   //clustering parameters:
-  edm::InputTag preshHitProducer_;         // name of module/plugin/producer producing hits
-  edm::InputTag endcapSClusterProducer_;   // ditto SuperClusters
+  edm::EDGetTokenT<EcalRecHitCollection> preshHitsToken_;         // name of module/plugin/producer producing hits
+  edm::EDGetTokenT<reco::SuperClusterCollection> endcapSClusterToken_;   // ditto SuperClusters
 
   // name out output collections
   std::string preshClusterCollectionX_;  

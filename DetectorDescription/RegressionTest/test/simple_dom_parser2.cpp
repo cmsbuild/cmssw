@@ -1,15 +1,24 @@
-#include "DetectorDescription/RegressionTest/src/SaxToDom2.h"
-#include "DetectorDescription/RegressionTest/src/TinyDomTest2.h"
-#include "DetectorDescription/RegressionTest/src/StrX.h"
-
-#include <xercesc/util/PlatformUtils.hpp>
+#include <stdlib.h>
+#include <string.h>
 #include <xercesc/sax2/SAX2XMLReader.hpp>
 #include <xercesc/sax2/XMLReaderFactory.hpp>
 #include <fstream>
 #include <map>
-#include <stdlib.h>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "DetectorDescription/RegressionTest/src/SaxToDom2.h"
+#include "DetectorDescription/RegressionTest/src/TagName.h"
+#include "DetectorDescription/RegressionTest/src/TinyDom2.h"
+#include "DetectorDescription/RegressionTest/src/TinyDomTest2.h"
+#include "FWCore/Concurrency/interface/Xerces.h"
+#include "xercesc/util/PlatformUtils.hpp"
+#include "xercesc/util/XMLException.hpp"
+#include "xercesc/util/XMLUni.hpp"
 
 using namespace std;
+using namespace xercesc;
 
 class ADummy2
 {
@@ -49,21 +58,23 @@ int main(int argC, char* argV[])
     // Initialize the XML4C2 system
     try
     {
-        XMLPlatformUtils::Initialize();
+        cms::concurrency::xercesInitialize();
     }
 
     catch (const XMLException& toCatch)
     {
-        cerr << "Error during initialization! Message:\n"
-            << StrX(toCatch.getMessage()) << endl;
-        return 1;
+      char* message = XMLString::transcode(toCatch.getMessage());
+      cerr << "Error during initialization! Message:\n"
+	   << message << endl;
+      XMLString::release(&message);
+      return 1;	
     }
 
     // Check command line and extract arguments.
     if (argC < 2)
     {
         usage2();
-        XMLPlatformUtils::Terminate();
+        cms::concurrency::xercesTerminate();
         return 1;
     }
 
@@ -87,7 +98,7 @@ int main(int argC, char* argV[])
         if (!strcmp(argV[argInd], "-?"))
         {
             usage2();
-            XMLPlatformUtils::Terminate();
+            cms::concurrency::xercesTerminate();
             return 2;
         }
          else if (!strncmp(argV[argInd], "-v=", 3)
@@ -104,7 +115,7 @@ int main(int argC, char* argV[])
             else
             {
                 cerr << "Unknown -v= value: " << parm << endl;
-                XMLPlatformUtils::Terminate();
+                cms::concurrency::xercesTerminate();
                 return 2;
             }
         }
@@ -155,7 +166,7 @@ int main(int argC, char* argV[])
     if (argInd != argC - 1)
     {
         usage2();
-        XMLPlatformUtils::Terminate();
+        cms::concurrency::xercesTerminate();
         return 1;
     }
 
@@ -237,23 +248,25 @@ int main(int argC, char* argV[])
 
         try
         {
-            const unsigned long startMillis = XMLPlatformUtils::getCurrentMillis();
-	     cout << "start parsing:" << xmlFile << endl;
-            parser->parse(xmlFile);
-	     cout << "parsing ended" << endl;
-            const unsigned long endMillis = XMLPlatformUtils::getCurrentMillis();
-            duration = endMillis - startMillis;
-	    TOTALduration += duration;
-	    cout << "duration = " << duration << endl;
+	  const unsigned long startMillis = XMLPlatformUtils::getCurrentMillis();
+	  cout << "start parsing:" << xmlFile << endl;
+	  parser->parse(xmlFile);
+	  cout << "parsing ended" << endl;
+	  const unsigned long endMillis = XMLPlatformUtils::getCurrentMillis();
+	  duration = endMillis - startMillis;
+	  TOTALduration += duration;
+	  cout << "duration = " << duration << endl;
         }
 
         catch (const XMLException& e)
         {
-            cerr << "\nError during parsing: '" << xmlFile << "'\n"
-                << "Exception message is:  \n"
-                << StrX(e.getMessage()) << "\n" << endl;
-            errorOccurred = true;
-            continue;
+	  char* message = XMLString::transcode(e.getMessage());
+	  cerr << "\nError during parsing: '" << xmlFile << "'\n"
+	       << "Exception message is:  \n"
+	       << message << "\n" << endl;
+	  errorOccurred = true;
+	  XMLString::release(&message);
+	  continue;
         }
 
         catch (...)
@@ -313,7 +326,7 @@ int main(int argC, char* argV[])
     delete parser;
 
     // And call the termination method
-    XMLPlatformUtils::Terminate();
+    cms::concurrency::xercesTerminate();
 
     if (errorOccurred)
         return 4;

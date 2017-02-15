@@ -13,14 +13,12 @@
 //
 // Original Author:  Jean-Roch Vlimant
 //         Created:  Thu Oct  4 02:28:48 CEST 2007
-// $Id: DetIdAssociatorESProducer.cc,v 1.4 2009/09/06 16:34:57 dmytro Exp $
 //
 //
 
 
 // system include files
 #include <memory>
-#include "boost/shared_ptr.hpp"
 
 // user include files
 #include "FWCore/Framework/interface/ModuleFactory.h"
@@ -41,7 +39,7 @@ public:
   DetIdAssociatorESProducer(const edm::ParameterSet&);
   ~DetIdAssociatorESProducer();
   
-  typedef boost::shared_ptr<DetIdAssociator> ReturnType;
+  typedef std::shared_ptr<DetIdAssociator> ReturnType;
   
   ReturnType produce(const DetIdAssociatorRecord&);
 private:

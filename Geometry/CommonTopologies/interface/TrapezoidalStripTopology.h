@@ -19,7 +19,7 @@
  *  not constant along the strips.
  */
 
-class TrapezoidalStripTopology GCC11_FINAL : public StripTopology {
+class TrapezoidalStripTopology final : public StripTopology {
 public:
 
   /** constructed from:
@@ -33,10 +33,12 @@ public:
 
   TrapezoidalStripTopology(int nstrip, float pitch, float detheight,float r0, int yAx);
 
+  using StripTopology::localPosition;
   virtual LocalPoint localPosition(float strip) const;
 
   virtual LocalPoint localPosition(const MeasurementPoint&) const;
   
+  using StripTopology::localError;
   virtual LocalError 
   localError(float strip, float stripErr2) const;
   

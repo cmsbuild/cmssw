@@ -1,7 +1,7 @@
 #ifndef PixelFitterByHelixProjections_H
 #define PixelFitterByHelixProjections_H
 
-#include "RecoPixelVertexing/PixelTrackFitting/interface/PixelFitter.h"
+#include "RecoPixelVertexing/PixelTrackFitting/interface/PixelFitterBase.h"
 #include "DataFormats/TrackingRecHit/interface/TrackingRecHit.h"
 #include "RecoTracker/TkTrackingRegions/interface/TrackingRegion.h"
 #include "FWCore/Framework/interface/EventSetup.h"
@@ -10,20 +10,15 @@
 
 #include <vector>
 
-//namespace edm {class ParameterSet;}
-class TransientTrackingRecHitBuilder;
-class TrackerGeometry;
-class MagneticField;
 
 
-class PixelFitterByHelixProjections : public PixelFitter {
+class PixelFitterByHelixProjections final : public PixelFitterBase {
 public:
-  PixelFitterByHelixProjections(  const edm::ParameterSet& cfg);
+  explicit PixelFitterByHelixProjections(const edm::EventSetup *es, const MagneticField *field);
   virtual ~PixelFitterByHelixProjections() {}
-    virtual reco::Track* run(
-      const edm::EventSetup& es,
-      const std::vector<const TrackingRecHit *>& hits,
-      const TrackingRegion& region) const;
+  virtual std::unique_ptr<reco::Track> run(const std::vector<const TrackingRecHit *>& hits,
+                                           const TrackingRegion& region) const override;
+
 private:
   /* these are just static and local moved to local namespace in cc .... 
    *
@@ -37,11 +32,7 @@ private:
   double errTip2(float apt, float eta) const;
   */
 private:
-  edm::ParameterSet theConfig;
-
-  mutable const TrackerGeometry * theTracker;
-  mutable const MagneticField * theField;
-  mutable const TransientTrackingRecHitBuilder * theTTRecHitBuilder;
-
+  const edm::EventSetup *theES;
+  const MagneticField *theField;
 };
 #endif

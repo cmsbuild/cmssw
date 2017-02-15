@@ -25,7 +25,8 @@ class EvtGenTestAnalyzer : public edm::EDAnalyzer
    
      //
      std::string fOutputFileName ;
-     std::string theSrc ;
+     edm::EDGetTokenT<edm::HepMCProduct> tokenHepMC_;
+
      TFile*      fOutputFile ;
      TH1D*       hGeneralId ;	   
      TH1D*       hIdPhiDaugs ;
@@ -66,8 +67,8 @@ class EvtGenTestAnalyzer : public edm::EDAnalyzer
      TH1D*       hPhi2 ;
      TH1D*       hCosThetaLambda ;
     
-     ofstream*   decayed; 
-     ofstream*   undecayed; 
+     std::ofstream*   decayed; 
+     std::ofstream*   undecayed; 
      int         nevent, nbs;
      
 };

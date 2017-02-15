@@ -21,7 +21,11 @@ import RecoTracker.TkSeedGenerator.SeedGeneratorFromRegionHitsEDProducer_cfi
 globalMixedSeeds = RecoTracker.TkSeedGenerator.SeedGeneratorFromRegionHitsEDProducer_cfi.seedGeneratorFromRegionHitsEDProducer.clone(
     OrderedHitsFactoryPSet = cms.PSet(
        ComponentName = cms.string('StandardHitPairGenerator'),
-       SeedingLayers = cms.string('MixedLayerPairs'),
+       SeedingLayers = cms.InputTag('MixedLayerPairs'),
        maxElement = cms.uint32(1000000)
     )
+)
+from Configuration.Eras.Modifier_trackingPhase1PU70_cff import trackingPhase1PU70
+trackingPhase1PU70.toModify(globalMixedSeeds,
+    OrderedHitsFactoryPSet = dict(maxElement = 0),
 )
